@@ -1,0 +1,96 @@
+---
+title: "MD1 - data preparation"
+author: ""
+date: "November 16, 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+
+library(tidyverse)
+library(psych)
+library(summarytools)
+```
+
+Notes:
+
+### Data processing
+
+```{r loading data, include = FALSE}
+orig.data <- read.csv(file = "data/md1_vienna_data_video_coding.csv") %>%
+  filter(subject_ID != "") %>%
+  filter(complete != "N") %>%
+  droplevels() %>%
+  rename(response.1cup = response, response.2cup = response.1, response.test1 = response.2, response.refam = response.3, response.test2 = response.4, response.oc = response.5) %>%
+  rename(treat_location.1cup = treat_location, treat_location.2cup = treat_location.1, treat_location.test1 = treat_location.2, treat_location.refam = treat_location.3, treat_location.test2 = treat_location.4, treat_location.oc = treat_location.5) %>%
+  rename(trial_num.1cup = trial_num, trial_num.2cup = trial_num.1, trial_num.test1 = trial_num.2, trial_num.refam = trial_num.3, trial_num.test2 = trial_num.4, trial_num.oc = trial_num.5)
+
+
+view(dfSummary(orig.data))
+
+test1.data <- orig.data %>%
+  select(subject_ID, breed, condition_order, test_block1, trial_num.test1, treat_location.test1, response.test1) %>%
+  filter(trial_num.test1 != "") %>%
+  droplevels() %>%
+  rename(condition = test_block1, trial_num = trial_num.test1, treat_location = treat_location.test1, response = response.test1)
+
+test2.data <- orig.data %>%
+  select(subject_ID, breed, condition_order, test_block2, trial_num.test2, treat_location.test2, response.test2) %>%
+  filter(trial_num.test2 != "") %>%
+  droplevels() %>%
+  rename(condition = test_block2, trial_num = trial_num.test2, treat_location = treat_location.test2, response = response.test2)
+
+oc.data <- orig.data %>%
+  select(subject_ID, breed, condition_order, odor, trial_num.oc, treat_location.oc, response.oc) %>%
+  filter(trial_num.oc != "") %>%
+  droplevels() %>%
+  rename(condition = odor, trial_num = trial_num.oc, treat_location = treat_location.oc, response = response.oc)
+
+two.cup.training.data <- orig.data %>%
+  select(subject_ID, breed, condition_order, X2cup, trial_num.2cup, treat_location.2cup, response.2cup) %>%
+  filter(trial_num.2cup != "") %>%
+  droplevels() %>%
+  rename(condition = X2cup, trial_num = trial_num.2cup, treat_location = treat_location.2cup, response = response.2cup)
+
+xdata <- test1.data %>%
+  full_join(test2.data) %>%
+  full_join(oc.data) %>%
+  full_join(two.cup.training.data) %>%
+  filter(response == 0 | response == 1) %>%
+  mutate(breed = fct_recode(breed, "MIX" = "Podenco Canario", "JP_Russell_Terrier" = "Jack_Russell_Terrier", "JP_Russell_Terrier" = "Parson_Russell_Terrier"))
+
+xdata <- xdata %>%
+  mutate(trial_num = as.numeric(str_sub(trial_num, 1, 1)), response = as.numeric(as.character(xdata$response))) %>%
+  droplevels()
+
+view(dfSummary(xdata))
+
+levels(xdata$breed)
+table(xdata$subject_ID, xdata$breed)
+```
+
+### Add demographic 
+
+```{r}
+
+demo.data <- read.csv("data/md1_demographics_vienna.csv") %>%
+  filter(Mail != "") %>%
+  select(subject_ID, dog_ageM, sex.1, dog_training_experience, research_experience) %>% # dog_training_experience is a compound score based on the c-BARQ trainability section (items 5, 6, and 7 were reversed)
+  rename(age = "dog_ageM", sex = "sex.1")
+
+
+long.data <- xdata %>%
+  inner_join(demo.data) %>%
+  droplevels()
+
+view(dfSummary(long.data))
+
+write.csv(long.data, file = "data/md1_data_vienna_long.csv")
+```

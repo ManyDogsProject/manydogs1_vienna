@@ -1,0 +1,156 @@
+---
+title: "MD1 - data plotting"
+author: ""
+date: "November 16, 2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+
+library(tidyverse)
+library(gghalves)
+library(ggthemes)
+library(psych)
+library(summarytools)
+library(cowplot)
+library(exactRankTests)
+```
+
+
+
+### Read data
+
+```{r loading data, include = FALSE}
+xdata <- read.csv("data/md1_data_vienna_long.csv")
+```
+
+
+### Aggregating data
+
+```{r include = FALSE}
+
+agg.data <- xdata %>%
+  group_by(subject_ID, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  filter(!is.na(mean.resp)) %>%
+  ungroup()
+
+summary.data <- agg.data %>%
+  group_by(condition) %>%
+  summarise(mean.resp2 = mean(mean.resp), median.resp = median(mean.resp))
+
+
+summary.data
+```
+### Plotting
+
+```{r}
+ggplot(data = agg.data, aes(x = condition, y = mean.resp)) +
+  geom_boxplot(alpha = 0.8) +
+  # geom_jitter()+
+  theme_few()
+```
+#### Breed plot
+```{r}
+breed.data <- xdata %>%
+  filter(condition != "odour", condition != "w_2cp_vd") %>%
+  group_by(subject_ID, breed, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  ungroup() %>%
+  group_by(condition, breed) %>%
+  add_count(mean.resp)
+
+breed.plot <- ggplot(data = breed.data, aes(x = condition, y = mean.resp)) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "black") +
+  geom_point(size = breed.data$n, alpha = 0.7, col = "darkgrey") +
+  geom_boxplot(alpha = 0.5, outlier.colour = "white") +
+  theme_few() +
+  xlab("Condition") +
+  ylab("Proportion correct") +
+  facet_wrap(~breed)
+
+breed.plot
+
+ggsave(breed.plot, filename = "graphs/md1_breeds.png", width = 10, height = 8, scale = 0.75)
+```
+
+
+#### Overall plot
+
+load bootstrapped CIs for condition (see data_analysis markdown file)
+```{r}
+ci.data <- read.csv(file = "predicted_condition_ci_MD1_Vienna.csv")
+```
+
+
+```{r}
+
+agg.data2 <- agg.data %>%
+  filter(condition != "odour", condition != "w_2cp_vd")
+
+agg.data2$condition2 <- jitter(as.numeric(agg.data2$condition, amount = .0001))
+
+
+md_plot <- ggplot(data = agg.data2, aes(x = condition, y = mean.resp)) +
+  geom_point(data = agg.data2 %>% filter(condition == "non"), aes(x = condition2), color = "dodgerblue", size = 1.5, alpha = .5) +
+  geom_point(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2), color = "darkorange", size = 1.5, alpha = .5) +
+  geom_line(aes(x = condition2, group = subject_ID), color = "gray", lty = 4, alpha = .3) +
+  geom_half_boxplot(data = agg.data2 %>% filter(condition == "non"), aes(x = condition2, y = mean.resp), position = position_nudge(x = -.6), side = "l", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .2, fill = "dodgerblue", alpha = .5) +
+  geom_half_boxplot(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2, y = mean.resp), position = position_nudge(x = .6), side = "r", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .2, fill = "darkorange", alpha = .5) +
+  geom_errorbar(data = ci.data %>% filter(condition == "ost"), aes(x = 3.5, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "darkorange", width = 0.1, size = 0.6) +
+  geom_errorbar(data = ci.data %>% filter(condition == "non"), aes(x = 0.5, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "dodgerblue", width = 0.1, size = 0.6) +
+  geom_point(data = ci.data %>% filter(condition == "ost"), aes(x = 3.5, y = fitted), color = "darkorange", size = 1.5) +
+  geom_point(data = ci.data %>% filter(condition == "non"), aes(x = 0.5, y = fitted), color = "dodgerblue", size = 1.5) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "red") +
+
+  # Define additional settings
+  xlab("Condition") +
+  ylab("Proportion correct") +
+  scale_x_continuous(breaks = c(0.75, 3.25), labels = c("Non-ostensive", "Ostensive"), limits = c(0, 4)) +
+  ylim(0, 1) +
+  theme_classic()
+
+md_plot
+
+ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale = 0.5)
+```
+
+```{r}
+
+agg.data3 <- agg.data %>%
+  filter(condition == "odour")
+
+# agg.data3$condition2 <- jitter(as.numeric(agg.data2$condition, amount=.001))
+
+
+od_plot <- ggplot(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp)) +
+  geom_jitter(data = agg.data3, aes(x = as.numeric(condition)), color = "grey", size = 1.5, alpha = .5, height = 0, width = 0.3) +
+  geom_half_boxplot(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp), position = position_nudge(x = -.4), side = "l", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .1, fill = "grey", alpha = .5) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "red") +
+  xlim(2, 2.5) +
+
+  # Define additional settings
+  xlab("") +
+  ylab("Proportion correct") +
+  scale_x_continuous(breaks = c(2), labels = c("Odour control"), limits = c(1.5, 2.3)) +
+  ylim(0, 1) +
+  theme_classic()
+
+od_plot
+
+# ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale=0.5)
+```
+
+```{r}
+
+pg <- plot_grid(md_plot, od_plot, rel_widths = c(2, 1), labels = c("A", "B"))
+
+ggsave(pg, filename = "graphs/md1_plot_w_oc.png", width = 10, height = 8, scale = 0.5)
+```

@@ -1,0 +1,172 @@
+---
+title: "MD1 - data analysis"
+author: ""
+date: "November 16, 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+
+library(tidyverse)
+library(psych)
+library(summarytools)
+library(lme4)
+library(car)
+
+source("./functions/diagnostic_fcns.r")
+source("./functions/glmm_stability.r")
+source("./functions/boot_glmm.r")
+source("./functions/drop1_para.r")
+
+load("md1_vienna_glmm_workspace.RData")
+```
+
+
+### Read data
+
+```{r include = FALSE}
+xdata <- read.csv("data/md1_data_vienna_long.csv") %>%
+  na.exclude() %>%
+  droplevels()
+
+summary(xdata)
+view(dfSummary(xdata))
+```
+
+### Aggregating data
+
+```{r loading data, include = FALSE}
+
+agg.data <- xdata %>%
+  group_by(subject_ID, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  ungroup()
+
+summary.data <- agg.data %>%
+  group_by(condition) %>%
+  summarise(mean.resp2 = mean(mean.resp), median.resp = median(mean.resp), sd = sd(mean.resp), se = sd(mean.resp) / sqrt(length(mean.resp)))
+
+
+summary.data
+```
+
+### One-sample t-test to compare against chance level
+
+
+```{r}
+
+tt.ost <- t.test(agg.data$mean.resp[agg.data$condition == "ost"], mu = 0.5, alternative = "two.sided")
+tt.non <- t.test(agg.data$mean.resp[agg.data$condition == "non"], mu = 0.5, alternative = "two.sided")
+tt.oc <- t.test(agg.data$mean.resp[agg.data$condition == "odour"], mu = 0.5, alternative = "two.sided")
+
+tt.ost
+tt.non
+tt.oc
+```
+
+
+### Paired-samples t-test to compare between conditions
+```{r}
+t.test(x = agg.data$mean.resp[agg.data$condition == "ost"], y = agg.data$mean.resp[agg.data$condition == "non"], paired = TRUE, alternative = "two.sided")
+```
+
+### Generalised linear mixed model
+
+```{r}
+# centering variables for modeling
+
+model.data <- xdata %>%
+  filter(condition == "ost" | condition == "non") %>%
+  mutate(
+    z.age = as.numeric(scale(age, scale = T, center = T)),
+    sex.c = as.numeric(scale(as.numeric(sex), scale = F, center = T)),
+    condition.c = as.numeric(scale(as.numeric(condition), scale = F, center = T)),
+    condition_order.c = as.numeric(scale(as.numeric(condition_order), scale = F, center = T)),
+    z.trial_num = as.numeric(scale(trial_num, scale = T, center = T)),
+    z.training_experience = as.numeric(scale(dog_training_experience, scale = T, center = T))
+  )
+
+view(dfSummary(model.data))
+```
+
+
+
+```{r}
+
+
+contr <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 10000000))
+
+mm1 <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num | subject_ID),
+  family = binomial, data = model.data, control = contr
+)
+```
+
+*Likelihood ratio test*
+```{r}
+drop1(mm1, test = "Chisq", control = contr) # likelihood ratio test
+```
+
+
+*Looking at the estimates of the fixed effects*
+```{r}
+round(summary(mm1)$coefficients, 3)
+```
+
+*Calculating confidence intervals with 1000 bootstraps*
+```{r}
+
+# perform bootstraps for all predictors
+# boot.res <- boot.glmm.pred(
+#  model.res = mm1, excl.warnings = T,
+#  nboots = 1000, para = T, level = 0.95
+# )
+
+boot.res$ci.estimates
+```
+
+### Check assumptions
+```{r}
+# check for colliniarity
+xx <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
+  data = model.data
+)
+vif(xx)
+```
+
+### Model stability
+One subject at a time excluded to assess the impact of outliers. 
+```{r}
+m.stab.b <- glmm.model.stab(model.res = mm1, use = c("subject_ID"))
+m.stab.b$detailed$warnings
+xx <- as.data.frame(round(m.stab.b$summary[, -1], 3))
+m.stab.plot(round(m.stab.b$summary[, -1], 3))
+```
+
+
+### Calculate CIs for plot
+```{r}
+# Model with all predictor variables centered except for condition:
+mm1.CI.con <- glmer(response ~ condition + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience + (condition.c + z.trial_num | subject_ID),
+  family = binomial, data = model.data, control = contr
+)
+```
+
+```{r}
+# pred.con.ci=boot.glmm.pred(model.res=mm1.CI.con,  level=0.95, #use="condition", n.cores="all-1", para=T)
+
+pred.con.ci$ci.predicted
+
+write.csv(pred.con.ci$ci.predicted, file = "predicted_condition_ci_MD1_Vienna.csv")
+```
+
+
+```{r}
+# save.image("md1_vienna_glmm_workspace.RData")
+```
