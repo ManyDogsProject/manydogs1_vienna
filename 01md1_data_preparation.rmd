@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 
 library(tidyverse)
+library(lubridate)
 library(psych)
 library(summarytools)
 ```
@@ -24,37 +25,44 @@ Notes:
 ### Data processing
 
 ```{r loading data, include = FALSE}
+start_date<-as.Date("2020-07-01")
+prereg_date<-as.Date("2020-08-18")
+
 orig.data <- read.csv(file = "data/md1_vienna_data_video_coding.csv") %>%
   filter(subject_ID != "") %>%
   filter(complete != "N") %>%
   droplevels() %>%
   rename(response.1cup = response, response.2cup = response.1, response.test1 = response.2, response.refam = response.3, response.test2 = response.4, response.oc = response.5) %>%
   rename(treat_location.1cup = treat_location, treat_location.2cup = treat_location.1, treat_location.test1 = treat_location.2, treat_location.refam = treat_location.3, treat_location.test2 = treat_location.4, treat_location.oc = treat_location.5) %>%
-  rename(trial_num.1cup = trial_num, trial_num.2cup = trial_num.1, trial_num.test1 = trial_num.2, trial_num.refam = trial_num.3, trial_num.test2 = trial_num.4, trial_num.oc = trial_num.5)
+  rename(trial_num.1cup = trial_num, trial_num.2cup = trial_num.1, trial_num.test1 = trial_num.2, trial_num.refam = trial_num.3, trial_num.test2 = trial_num.4, trial_num.oc = trial_num.5)%>%
+  mutate(test_date=as.Date(test_date, tryFormats = c("%d/%m/%Y")))%>%
+    mutate(preregistered_data=ifelse(test_date %within% interval(start_date, prereg_date), "before_prereg", "after_prereg"))
 
 
 view(dfSummary(orig.data))
 
+
+
 test1.data <- orig.data %>%
-  select(subject_ID, breed, condition_order, test_block1, trial_num.test1, treat_location.test1, response.test1) %>%
+  select(subject_ID, breed, preregistered_data, condition_order, test_block1, trial_num.test1, treat_location.test1, response.test1) %>%
   filter(trial_num.test1 != "") %>%
   droplevels() %>%
   rename(condition = test_block1, trial_num = trial_num.test1, treat_location = treat_location.test1, response = response.test1)
 
 test2.data <- orig.data %>%
-  select(subject_ID, breed, condition_order, test_block2, trial_num.test2, treat_location.test2, response.test2) %>%
+  select(subject_ID, breed, preregistered_data, condition_order, test_block2, trial_num.test2, treat_location.test2, response.test2) %>%
   filter(trial_num.test2 != "") %>%
   droplevels() %>%
   rename(condition = test_block2, trial_num = trial_num.test2, treat_location = treat_location.test2, response = response.test2)
 
 oc.data <- orig.data %>%
-  select(subject_ID, breed, condition_order, odor, trial_num.oc, treat_location.oc, response.oc) %>%
+  select(subject_ID, breed, preregistered_data, condition_order, odor, trial_num.oc, treat_location.oc, response.oc) %>%
   filter(trial_num.oc != "") %>%
   droplevels() %>%
   rename(condition = odor, trial_num = trial_num.oc, treat_location = treat_location.oc, response = response.oc)
 
 two.cup.training.data <- orig.data %>%
-  select(subject_ID, breed, condition_order, X2cup, trial_num.2cup, treat_location.2cup, response.2cup) %>%
+  select(subject_ID, breed, preregistered_data, condition_order, X2cup, trial_num.2cup, treat_location.2cup, response.2cup) %>%
   filter(trial_num.2cup != "") %>%
   droplevels() %>%
   rename(condition = X2cup, trial_num = trial_num.2cup, treat_location = treat_location.2cup, response = response.2cup)
@@ -74,6 +82,7 @@ view(dfSummary(xdata))
 
 levels(xdata$breed)
 table(xdata$subject_ID, xdata$breed)
+table(xdata$subject_ID, xdata$preregistered_data)
 ```
 
 ### Add demographic 
