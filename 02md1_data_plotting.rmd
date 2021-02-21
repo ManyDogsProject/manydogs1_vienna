@@ -1,7 +1,7 @@
 ---
 title: "MD1 - data plotting"
 author: ""
-date: "November 16, 2020"
+date: "February 21, 2021"
 output:
   html_document: default
   pdf_document: default
@@ -22,6 +22,143 @@ library(summarytools)
 library(cowplot)
 library(exactRankTests)
 ```
+
+## Preregistered data
+
+### Read data
+
+```{r loading data, include = FALSE}
+prereg.data <- read.csv("data/md1_data_vienna_long.csv")%>%
+  filter(preregistered_data=="after_prereg") #only data that were collected after preregistration
+  
+```
+
+### Aggregating data
+
+```{r include = FALSE}
+
+agg.data.prereg <- prereg.data %>%
+  group_by(subject_ID, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  filter(!is.na(mean.resp)) %>%
+  ungroup()
+
+summary.data.prereg <- agg.data.prereg %>%
+  group_by(condition) %>%
+  summarise(mean.resp2 = mean(mean.resp), median.resp = median(mean.resp))
+
+
+summary.data.prereg
+```
+### Plotting
+
+```{r}
+ggplot(data = agg.data.prereg, aes(x = condition, y = mean.resp)) +
+  geom_boxplot(alpha = 0.8) +
+  # geom_jitter()+
+  theme_few()
+```
+#### Breed plot
+```{r}
+breed.data.prereg <- prereg.data %>%
+  filter(condition != "odour", condition != "w_2cp_vd") %>% #only test conditions
+  group_by(subject_ID, breed, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  ungroup() %>%
+  group_by(condition, breed) %>%
+  add_count(mean.resp)
+
+breed.plot.prereg <- ggplot(data = breed.data.prereg, aes(x = condition, y = mean.resp)) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "black") +
+  geom_point(size = breed.data.prereg$n, alpha = 0.7, col = "darkgrey") +
+  geom_boxplot(alpha = 0.5, outlier.colour = "white") +
+  theme_few() +
+  xlab("Condition") +
+  ylab("Proportion correct") +
+  facet_wrap(~breed)
+
+breed.plot.prereg
+
+ggsave(breed.plot.prereg, filename = "graphs/md1_breeds_prereg_data.png", width = 10, height = 8, scale = 0.75)
+```
+
+
+#### Overall plot
+
+load bootstrapped CIs for condition (see data_analysis markdown file)
+```{r}
+ci.data <- read.csv(file = "data/mm1_predicted_ci_for_conditionMD1_Vienna.csv")
+```
+
+
+```{r}
+
+agg.data.prereg2 <- agg.data.prereg %>%
+  filter(condition != "odour", condition != "w_2cp_vd")
+
+agg.data.prereg2$condition2 <- jitter(as.numeric(as.factor(agg.data.prereg2$condition), amount = .0001))
+
+
+md_plot_prereg <- ggplot(data = agg.data.prereg2, aes(x = condition, y = mean.resp)) +
+  geom_point(data = agg.data.prereg2 %>% filter(condition == "non"), aes(x = condition2), color = "dodgerblue", size = 1.5, alpha = .5) +
+  geom_point(data = agg.data.prereg2 %>% filter(condition == "ost"), aes(x = condition2), color = "darkorange", size = 1.5, alpha = .5, ) +
+  geom_line(aes(x = condition2, group = subject_ID), color = "gray", lty = 4, alpha = .3) +
+  geom_half_violin(data = agg.data.prereg2 %>% filter(condition == "non"), aes(x = condition2, y = mean.resp), position = position_nudge(x = -.5), side = "l", width = .2, fill = "dodgerblue", alpha = .5) +
+  geom_half_violin(data = agg.data.prereg2 %>% filter(condition == "ost"), aes(x = condition2, y = mean.resp), position = position_nudge(x = 0.5), side = "r", width = .2, fill = "darkorange", alpha = .5) +
+  geom_errorbar(data = ci.data %>% filter(condition == "ost"), aes(x = 2.3, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "darkorange", width = 0.1, size = 0.6) +
+  geom_errorbar(data = ci.data %>% filter(condition == "non"), aes(x = 0.65, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "dodgerblue", width = 0.1, size = 0.6) +
+  geom_point(data = ci.data %>% filter(condition == "ost"), aes(x = 2.3, y = fitted), color = "darkorange", size = 1.5) +
+  geom_point(data = ci.data %>% filter(condition == "non"), aes(x = 0.65, y = fitted), color = "dodgerblue", size = 1.5) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "red") +
+
+  # Define additional settings
+  xlab("Condition") +
+  ylab("Proportion correct") +
+  scale_x_continuous(breaks = c(0.75, 2.25), labels = c("Non-ostensive", "Ostensive"), limits = c(0,3)) +
+  ylim(0, 1) +
+  theme_classic()
+
+md_plot_prereg
+
+ggsave(md_plot_prereg, filename = "graphs/md1_plot_prereg.png", width = 10, height = 8, scale = 0.5)
+```
+
+```{r}
+
+agg.data.prereg3 <- agg.data.prereg %>%
+  mutate(condition=as.factor(condition))%>%
+  filter(condition == "odour")
+
+# agg.data3$condition2 <- jitter(as.numeric(agg.data2$condition, amount=.001))
+
+
+od_plot_prereg <- ggplot(data = agg.data.prereg3, aes(x = as.numeric(condition), y = mean.resp)) +
+  geom_jitter(data = agg.data.prereg3, aes(x = as.numeric(condition)), color = "grey", size = 1.5, alpha = .5, height = 0, width = 0.2) +
+  geom_half_violin(data = agg.data.prereg3, aes(x = as.numeric(condition), y = mean.resp), position = position_nudge(x = -.3), side = "l", width = .2, fill = "grey", alpha = .5) +
+  geom_hline(yintercept = 0.5, lty = 2, col = "red") +
+  xlim(2, 2.5) +
+
+  # Define additional settings
+  xlab("") +
+  ylab("Proportion correct") +
+  scale_x_continuous(breaks = c(2), labels = c("Odour control"), limits = c(1.5, 2.3)) +
+  ylim(0, 1) +
+  theme_classic()
+
+od_plot_prereg
+
+# ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale=0.5)
+```
+
+```{r}
+
+pg <- plot_grid(md_plot_prereg, od_plot_prereg, rel_widths = c(2, 1), labels = c("A", "B"))
+
+ggsave(pg, filename = "graphs/md1_plot_prereg_w_oc.pdf", width = 10, height = 8, scale = 0.5)
+```
+
+
+### all data (including data collect prior to preregistration)
 
 
 
@@ -78,7 +215,7 @@ breed.plot <- ggplot(data = breed.data, aes(x = condition, y = mean.resp)) +
 
 breed.plot
 
-ggsave(breed.plot, filename = "graphs/md1_breeds.png", width = 10, height = 8, scale = 0.75)
+ggsave(breed.plot, filename = "graphs/md1_breeds_all_data.png", width = 10, height = 8, scale = 0.75)
 ```
 
 
@@ -86,7 +223,7 @@ ggsave(breed.plot, filename = "graphs/md1_breeds.png", width = 10, height = 8, s
 
 load bootstrapped CIs for condition (see data_analysis markdown file)
 ```{r}
-ci.data <- read.csv(file = "predicted_condition_ci_MD1_Vienna.csv")
+ci.data <- read.csv(file = "data/mm2_predicted_ci_for_condition_MD1_Vienna.csv")
 ```
 
 
@@ -95,44 +232,45 @@ ci.data <- read.csv(file = "predicted_condition_ci_MD1_Vienna.csv")
 agg.data2 <- agg.data %>%
   filter(condition != "odour", condition != "w_2cp_vd")
 
-agg.data2$condition2 <- jitter(as.numeric(agg.data2$condition, amount = .0001))
-
+agg.data2$condition2 <- jitter(as.numeric(as.factor(agg.data2$condition), amount = .0001))
 
 md_plot <- ggplot(data = agg.data2, aes(x = condition, y = mean.resp)) +
   geom_point(data = agg.data2 %>% filter(condition == "non"), aes(x = condition2), color = "dodgerblue", size = 1.5, alpha = .5) +
-  geom_point(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2), color = "darkorange", size = 1.5, alpha = .5) +
+  geom_point(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2), color = "darkorange", size = 1.5, alpha = .5, ) +
   geom_line(aes(x = condition2, group = subject_ID), color = "gray", lty = 4, alpha = .3) +
-  geom_half_boxplot(data = agg.data2 %>% filter(condition == "non"), aes(x = condition2, y = mean.resp), position = position_nudge(x = -.6), side = "l", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .2, fill = "dodgerblue", alpha = .5) +
-  geom_half_boxplot(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2, y = mean.resp), position = position_nudge(x = .6), side = "r", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .2, fill = "darkorange", alpha = .5) +
-  geom_errorbar(data = ci.data %>% filter(condition == "ost"), aes(x = 3.5, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "darkorange", width = 0.1, size = 0.6) +
-  geom_errorbar(data = ci.data %>% filter(condition == "non"), aes(x = 0.5, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "dodgerblue", width = 0.1, size = 0.6) +
-  geom_point(data = ci.data %>% filter(condition == "ost"), aes(x = 3.5, y = fitted), color = "darkorange", size = 1.5) +
-  geom_point(data = ci.data %>% filter(condition == "non"), aes(x = 0.5, y = fitted), color = "dodgerblue", size = 1.5) +
+  geom_half_violin(data = agg.data2 %>% filter(condition == "non"), aes(x = condition2, y = mean.resp), position = position_nudge(x = -.5), side = "l", width = .2, fill = "dodgerblue", alpha = .5) +
+  geom_half_violin(data = agg.data2 %>% filter(condition == "ost"), aes(x = condition2, y = mean.resp), position = position_nudge(x = 0.5), side = "r", width = .2, fill = "darkorange", alpha = .5) +
+  geom_errorbar(data = ci.data %>% filter(condition == "ost"), aes(x = 2.3, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "darkorange", width = 0.1, size = 0.6) +
+  geom_errorbar(data = ci.data %>% filter(condition == "non"), aes(x = 0.65, y = fitted, ymin = lower.cl, ymax = upper.cl), color = "dodgerblue", width = 0.1, size = 0.6) +
+  geom_point(data = ci.data %>% filter(condition == "ost"), aes(x = 2.3, y = fitted), color = "darkorange", size = 1.5) +
+  geom_point(data = ci.data %>% filter(condition == "non"), aes(x = 0.65, y = fitted), color = "dodgerblue", size = 1.5) +
   geom_hline(yintercept = 0.5, lty = 2, col = "red") +
 
   # Define additional settings
   xlab("Condition") +
   ylab("Proportion correct") +
-  scale_x_continuous(breaks = c(0.75, 3.25), labels = c("Non-ostensive", "Ostensive"), limits = c(0, 4)) +
+  scale_x_continuous(breaks = c(0.75, 2.25), labels = c("Non-ostensive", "Ostensive"), limits = c(0,3)) +
   ylim(0, 1) +
   theme_classic()
 
+
+
 md_plot
 
-ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale = 0.5)
+ggsave(md_plot, filename = "graphs/md1_plot_all_data.png", width = 10, height = 8, scale = 0.5)
 ```
 
 ```{r}
-
 agg.data3 <- agg.data %>%
+  mutate(condition=as.factor(condition))%>%
   filter(condition == "odour")
 
 # agg.data3$condition2 <- jitter(as.numeric(agg.data2$condition, amount=.001))
 
 
 od_plot <- ggplot(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp)) +
-  geom_jitter(data = agg.data3, aes(x = as.numeric(condition)), color = "grey", size = 1.5, alpha = .5, height = 0, width = 0.3) +
-  geom_half_boxplot(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp), position = position_nudge(x = -.4), side = "l", outlier.shape = NA, center = TRUE, errorbar.draw = TRUE, width = .1, fill = "grey", alpha = .5) +
+  geom_jitter(data = agg.data3, aes(x = as.numeric(condition)), color = "grey", size = 1.5, alpha = .5, height = 0, width = 0.2) +
+  geom_half_violin(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp), position = position_nudge(x = -.3), side = "l", width = .2, fill = "grey", alpha = .5) +
   geom_hline(yintercept = 0.5, lty = 2, col = "red") +
   xlim(2, 2.5) +
 
@@ -143,6 +281,7 @@ od_plot <- ggplot(data = agg.data3, aes(x = as.numeric(condition), y = mean.resp
   ylim(0, 1) +
   theme_classic()
 
+
 od_plot
 
 # ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale=0.5)
@@ -152,5 +291,5 @@ od_plot
 
 pg <- plot_grid(md_plot, od_plot, rel_widths = c(2, 1), labels = c("A", "B"))
 
-ggsave(pg, filename = "graphs/md1_plot_w_oc.png", width = 10, height = 8, scale = 0.5)
+ggsave(pg, filename = "graphs/md1_plot_w_oc_all_data.pdf", width = 10, height = 8, scale = 0.5)
 ```
