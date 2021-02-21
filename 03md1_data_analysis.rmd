@@ -1,7 +1,7 @@
 ---
-title: "MD1 - data analysis"
+title: "MD1 - CDL data analysis"
 author: ""
-date: "November 16, 2020"
+date: "February 21, 2021"
 output:
   pdf_document: default
   html_document: default
@@ -20,31 +20,42 @@ library(summarytools)
 library(lme4)
 library(car)
 
-source("./functions/diagnostic_fcns.r")
 source("./functions/glmm_stability.r")
 source("./functions/boot_glmm.r")
-source("./functions/drop1_para.r")
 
 load("md1_vienna_glmm_workspace.RData")
 ```
 
+# Preregistration
+## Hypothesis
+ManyDogs 1 aims to investigate how dogs perceive human pointing gestures. Our specific question is: Do dogs understand and act on human pointing as though it is a social communicative gesture?
+While studies of dogs following pointing are numerous, there is ongoing debate in the field of Canine Science about whether dogs perceive pointing gestures as peremptory and follow them much like they would a verbal command, or as socially communicative cues. We will address this question and investigate whether dogs understand and act on pointing as a social communicative gesture by comparing a condition in which pointing is prefaced by ostensive cues (intentional gaze, name calling verbal cues) to a condition in which it is not (gaze avoidance, no verbal cues). 
 
-### Read data
+### Condition predictions
+i) We predict that if dogs perceive pointing gestures as commands, as a group they would follow the gesture above chance in both experimental conditions. Moreover, we would expect there to be no significant differences between point-following by dogs in the two experimental conditions. 
+ii) We predict that if dogs perceive pointing gestures as socially communicative cues, they would perform significantly better in the ostensive condition than in the non-ostensive condition. 
+iii) We predict that in the odor control task that dogs will not differ significantly from the hypothetical chance level of 0.5.
+
+Additional predictors about demographics, research task experience, training history, along with site-specific variables will be evaluated as well, but we do not have specific predictions about how they may influence performance in this task.
+
+# Data analysis
+### Read data  
 
 ```{r include = FALSE}
-xdata <- read.csv("data/md1_data_vienna_long.csv") %>%
+prereg.data <- read.csv("data/md1_data_vienna_long.csv") %>%
+  filter(preregistered_data=="after_prereg")%>% #only data that were collected after preregistration
   na.exclude() %>%
   droplevels()
 
-summary(xdata)
-view(dfSummary(xdata))
+summary(prereg.data)
+#view(dfSummary(prereg.data))
 ```
 
 ### Aggregating data
 
-```{r loading data, include = FALSE}
+```{r include = FALSE}
 
-agg.data <- xdata %>%
+agg.data <- prereg.data  %>%
   group_by(subject_ID, condition) %>%
   summarise(mean.resp = mean(response)) %>%
   ungroup()
@@ -58,9 +69,9 @@ summary.data
 ```
 
 ### One-sample t-test to compare against chance level
+Preregistration: T-tests: Proportion of correct choices different from chance level (0.5) per condition (ostensive, non-ostensive, odor control). We will conduct this analysis also separately for each lab. For this analysis, performance is aggregated per individual. 
 
-
-```{r}
+```{r }
 
 tt.ost <- t.test(agg.data$mean.resp[agg.data$condition == "ost"], mu = 0.5, alternative = "two.sided")
 tt.non <- t.test(agg.data$mean.resp[agg.data$condition == "non"], mu = 0.5, alternative = "two.sided")
@@ -70,37 +81,38 @@ tt.ost
 tt.non
 tt.oc
 ```
+The dogs (N = 61) performed significantly better than expected by chance in the ostensive condition (mean = `r round(tt.ost$estimate, 2)`, 95% CI [`r round(tt.ost$conf.int[1],2)`, `r round(tt.ost$conf.int[2],2)`], *t*(`r tt.ost$parameter`)=`r round(tt.ost$statistic,2)`, *p*=`r round(tt.ost$p.value,3)`) but not in the non-ostensive condition (mean = `r round(tt.non$estimate, 2)`, 95% CI [`r round(tt.non$conf.int[1],2)`, `r round(tt.non$conf.int[2],2)`], *t*(`r tt.non$parameter`)=`r round(tt.non$statistic,2)`, *p*=`r round(tt.non$p.value,3)`) or the odor control condition (mean = `r round(tt.oc$estimate, 2)`, 95% CI [`r round(tt.oc$conf.int[1],2)`, `r round(tt.oc$conf.int[2],2)`], *t*(`r tt.oc$parameter`)=`r round(tt.oc$statistic,2)`, *p*=`r round(tt.oc$p.value,3)`). 
 
-
-### Paired-samples t-test to compare between conditions
-```{r}
-t.test(x = agg.data$mean.resp[agg.data$condition == "ost"], y = agg.data$mean.resp[agg.data$condition == "non"], paired = TRUE, alternative = "two.sided")
-```
 
 ### Generalised linear mixed model
+Preregistration: Generalized linear mixed model (GLMM) with binomial error structure and logit link function (only including the ostensive and non-ostensive condition):
+Correct choice ~ condition + order_condition + trial_within_condition + sex + age +  dog_training_experience + (condition + trial_within_condition +  | Subject ID) + (condition+ order_condition + trial_within_condition + sex + age + dog_training_experience | Lab ID), family = binomial
+
+All covariates will be z-transformed. The random slope components of the factors will be centered (to ensure that the results are not conditional on the choice of the reference category).
+In order to rule out collinearity issues, we will determine Variance Inflation Factors using the function vif (R package car).
+As inference criterion, we will use p-values below .05 (two-tailed) for one sample t-tests. For the GLMMs, likelihood ratio tests (R function drop1 with argument 'test' set to "Chisq") with p-values smaller than .05 will be used as criterion to make inferences about fixed effects.
+
 
 ```{r}
 # centering variables for modeling
 
-model.data <- xdata %>%
+model.data <- prereg.data  %>%
   filter(condition == "ost" | condition == "non") %>%
   mutate(
     z.age = as.numeric(scale(age, scale = T, center = T)),
-    sex.c = as.numeric(scale(as.numeric(sex), scale = F, center = T)),
-    condition.c = as.numeric(scale(as.numeric(condition), scale = F, center = T)),
-    condition_order.c = as.numeric(scale(as.numeric(condition_order), scale = F, center = T)),
+    sex.c = as.numeric(scale(as.numeric(as.factor(sex)), scale = F, center = T)),
+    condition.c = as.numeric(scale(as.numeric(as.factor(condition)), scale = F, center = T)),
+    condition_order.c = as.numeric(scale(as.numeric(as.factor(condition_order)), scale = F, center = T)),
     z.trial_num = as.numeric(scale(trial_num, scale = T, center = T)),
     z.training_experience = as.numeric(scale(dog_training_experience, scale = T, center = T))
   )
 
-view(dfSummary(model.data))
+#view(dfSummary(model.data))
 ```
 
 
 
 ```{r}
-
-
 contr <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 10000000))
 
 mm1 <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num | subject_ID),
@@ -110,25 +122,32 @@ mm1 <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age 
 
 *Likelihood ratio test*
 ```{r}
-drop1(mm1, test = "Chisq", control = contr) # likelihood ratio test
+drop1.mm1<-drop1(mm1, test = "Chisq", control = contr) 
+round(drop1.mm1, 3)
 ```
+The dogs were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r round(drop1.mm1["condition", "npar"],3)`)=`r round(drop1.mm1["condition", "LRT"],3)`, p = `r round(drop1.mm1["condition", "Pr(Chi)"],3)`). The control predictors order of condition, trial number (within condition), sex, age, or the C-BARQ trainability score had no significant effect on dogs' choices.
 
 
-*Looking at the estimates of the fixed effects*
+
+*Estimates of the fixed effects*
 ```{r}
 round(summary(mm1)$coefficients, 3)
 ```
+*Random effects* 
+```{r}
+summary(mm1)$varcor
+```
+
 
 *Calculating confidence intervals with 1000 bootstraps*
-```{r}
+```{r eval=FALSE}
+#perform bootstraps for all predictors
+mm1.boot.ci <- boot.glmm.pred(model.res = mm1, excl.warnings = T, nboots = 1000, para = T, n.cores="all-1", level = 0.95)
+```
 
-# perform bootstraps for all predictors
-# boot.res <- boot.glmm.pred(
-#  model.res = mm1, excl.warnings = T,
-#  nboots = 1000, para = T, level = 0.95
-# )
 
-boot.res$ci.estimates
+```{r }
+round(mm1.boot.ci$ci.estimates, 3)
 ```
 
 ### Check assumptions
@@ -139,16 +158,25 @@ xx <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
 )
 vif(xx)
 ```
+Collinearity was no issue (maximum variance inflation factor: 1.02)
 
 ### Model stability
 One subject at a time excluded to assess the impact of outliers. 
-```{r}
+```{r eval=FALSE}
 m.stab.b <- glmm.model.stab(model.res = mm1, use = c("subject_ID"))
 m.stab.b$detailed$warnings
 xx <- as.data.frame(round(m.stab.b$summary[, -1], 3))
+
+png("graphs/mm1_stability_plot.png")
+m.stab.plot(round(m.stab.b$summary[, -1], 3))
+dev.off()
+
+```
+```{r}
 m.stab.plot(round(m.stab.b$summary[, -1], 3))
 ```
 
+The model appeared to be stable with respect to the fixed effects (see mm1_stability_plot).
 
 ### Calculate CIs for plot
 ```{r}
@@ -158,15 +186,164 @@ mm1.CI.con <- glmer(response ~ condition + condition_order.c + z.trial_num + sex
 )
 ```
 
-```{r}
-# pred.con.ci=boot.glmm.pred(model.res=mm1.CI.con,  level=0.95, #use="condition", n.cores="all-1", para=T)
+```{r eval=FALSE}
+pred.con.ci=boot.glmm.pred(model.res=mm1.CI.con,  level=0.95, use="condition", n.cores="all-1", para=T)
 
 pred.con.ci$ci.predicted
 
-write.csv(pred.con.ci$ci.predicted, file = "predicted_condition_ci_MD1_Vienna.csv")
+write.csv(pred.con.ci$ci.predicted, file = "data/mm1_predicted_ci_for_conditionMD1_Vienna.csv")
 ```
 
 
 ```{r}
-# save.image("md1_vienna_glmm_workspace.RData")
+#save.image("md1_vienna_glmm_workspace.RData")
+```
+
+
+
+## all data (including data that was collected prior to preregistration)
+
+### Read data
+
+```{r include = FALSE}
+all.data <- read.csv("data/md1_data_vienna_long.csv") %>%
+  na.exclude() %>%
+  droplevels()
+
+summary(all.data)
+#view(dfSummary(all.data))
+```
+
+### Aggregating data
+
+```{r include = FALSE}
+
+agg.data.all <- all.data %>%
+  group_by(subject_ID, condition) %>%
+  summarise(mean.resp = mean(response)) %>%
+  ungroup()
+
+summary.data.all <- agg.data.all %>%
+  group_by(condition) %>%
+  summarise(mean.resp2 = mean(mean.resp), median.resp = median(mean.resp), sd = sd(mean.resp), se = sd(mean.resp) / sqrt(length(mean.resp)))
+
+
+summary.data.all
+```
+
+### One-sample t-test to compare against chance level
+
+
+```{r}
+
+tt.ost.all <- t.test(agg.data.all$mean.resp[agg.data.all$condition == "ost"], mu = 0.5, alternative = "two.sided")
+tt.non.all <- t.test(agg.data.all$mean.resp[agg.data.all$condition == "non"], mu = 0.5, alternative = "two.sided")
+tt.oc.all <- t.test(agg.data.all$mean.resp[agg.data.all$condition == "odour"], mu = 0.5, alternative = "two.sided")
+
+tt.ost.all
+tt.non.all
+tt.oc.all
+```
+The dogs (N = 91) performed significantly better than expected by chance in the ostensive condition (mean = `r round(tt.ost.all$estimate, 2)`, 95% CI [`r round(tt.ost.all$conf.int[1],2)`, `r round(tt.ost.all$conf.int[2],2)`], *t*(`r tt.ost.all$parameter`)=`r round(tt.ost.all$statistic,2)`, *p*=`r round(tt.ost.all$p.value,3)`) but not in the non-ostensive condition (mean = `r round(tt.non.all$estimate, 2)`, 95% CI [`r round(tt.non.all$conf.int[1],2)`, `r round(tt.non.all$conf.int[2],2)`], *t*(`r tt.non.all$parameter`)=`r round(tt.non.all$statistic,2)`, *p*=`r round(tt.non.all$p.value,3)`) or the odor control condition (mean = `r round(tt.oc.all$estimate, 2)`, 95% CI [`r round(tt.oc.all$conf.int[1],2)`, `r round(tt.oc.all$conf.int[2],2)`], *t*(`r tt.oc.all$parameter`)=`r round(tt.oc.all$statistic,2)`, *p*=`r round(tt.oc.all$p.value,3)`). 
+
+### Generalised linear mixed model
+
+```{r}
+# centering variables for modeling
+
+model.data.all <- all.data %>%
+  filter(condition == "ost" | condition == "non") %>%
+  mutate(
+    z.age = as.numeric(scale(age, scale = T, center = T)),
+    sex.c = as.numeric(scale(as.numeric(as.factor(sex)), scale = F, center = T)),
+    condition.c = as.numeric(scale(as.numeric(as.factor(condition)), scale = F, center = T)),
+    condition_order.c = as.numeric(scale(as.numeric(as.factor(condition_order)), scale = F, center = T)),
+    z.trial_num = as.numeric(scale(trial_num, scale = T, center = T)),
+    z.training_experience = as.numeric(scale(dog_training_experience, scale = T, center = T))
+  )
+
+#view(dfSummary(model.data.all))
+```
+
+
+
+```{r}
+contr <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 10000000))
+
+mm2 <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID),
+  family = binomial, data = model.data.all, control = contr
+)
+```
+
+*Likelihood ratio test*
+```{r}
+drop1.mm2<-drop1(mm2, test = "Chisq", control = contr) 
+round(drop1.mm2, 3)
+```
+The dogs were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r round(drop1.mm2["condition", "npar"],3)`)=`r round(drop1.mm2["condition", "LRT"],3)`, p = `r round(drop1.mm2["condition", "Pr(Chi)"],3)`). The control predictors order of condition, trial number (within condition), sex, age, or the C-BARQ trainability score had no significant effect on dogs' choices.
+
+*Estimates of the fixed effects*  
+```{r}
+round(summary(mm2)$coefficients, 3)
+```
+
+*Random effects* 
+```{r}
+summary(mm2)$varcor
+```
+
+*Calculating confidence intervals with 1000 bootstraps*
+```{r eval=FALSE}
+# perform bootstraps for all predictors
+boot.res.mm2 <- boot.glmm.pred(model.res = mm2, excl.warnings = T, nboots = 1000, para = T, level = 0.95, n.cores="all-1")
+```
+```{r}
+round(boot.res.mm2$ci.estimates, 3)
+```
+
+
+### Check assumptions
+```{r}
+# check for colliniarity
+xx2 <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
+  data = model.data
+)
+vif(xx2)
+```
+
+### Model stability
+One subject at a time excluded to assess the impact of outliers. 
+```{r eval=FALSE}
+m.stab.b.mm2 <- glmm.model.stab(model.res = mm1, use = c("subject_ID"))
+m.stab.b.mm2$detailed$warnings
+xx2 <- as.data.frame(round(m.stab.b$summary[, -1], 3))
+png("graphs/mm2_stability_plot.png")
+m.stab.plot(round(m.stab.b.mm2$summary[, -1], 3))
+dev.off()
+```
+
+```{r}
+m.stab.plot(round(m.stab.b.mm2$summary[, -1], 3))
+```
+
+
+
+### Calculate CIs for plot
+```{r}
+# Model with all predictor variables centered except for condition:
+mm2.CI.con <- glmer(response ~ condition + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience + (condition.c + z.trial_num | subject_ID),
+  family = binomial, data = model.data, control = contr
+)
+```
+
+```{r eval=FALSE}
+mm2.pred.con.ci=boot.glmm.pred(model.res=mm2.CI.con,  level=0.95, use="condition", n.cores="all-1", para=T)
+
+mm2.pred.con.ci$ci.predicted
+
+write.csv(mm2.pred.con.ci$ci.predicted, file = "data/mm2_predicted_ci_for_condition_MD1_Vienna.csv")
+```
+
+```{r}
+#save.image("md1_vienna_glmm_workspace.RData")
 ```
