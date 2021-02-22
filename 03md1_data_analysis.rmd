@@ -19,6 +19,8 @@ library(psych)
 library(summarytools)
 library(lme4)
 library(car)
+library(BayesFactor)
+library(bayestestR)
 
 source("./functions/glmm_stability.r")
 source("./functions/boot_glmm.r")
@@ -81,7 +83,17 @@ tt.ost
 tt.non
 tt.oc
 ```
-The dogs (N = 61) performed significantly better than expected by chance in the ostensive condition (mean = `r round(tt.ost$estimate, 2)`, 95% CI [`r round(tt.ost$conf.int[1],2)`, `r round(tt.ost$conf.int[2],2)`], *t*(`r tt.ost$parameter`)=`r round(tt.ost$statistic,2)`, *p*=`r round(tt.ost$p.value,3)`) but not in the non-ostensive condition (mean = `r round(tt.non$estimate, 2)`, 95% CI [`r round(tt.non$conf.int[1],2)`, `r round(tt.non$conf.int[2],2)`], *t*(`r tt.non$parameter`)=`r round(tt.non$statistic,2)`, *p*=`r round(tt.non$p.value,3)`) or the odor control condition (mean = `r round(tt.oc$estimate, 2)`, 95% CI [`r round(tt.oc$conf.int[1],2)`, `r round(tt.oc$conf.int[2],2)`], *t*(`r tt.oc$parameter`)=`r round(tt.oc$statistic,2)`, *p*=`r round(tt.oc$p.value,3)`). 
+```{r }
+
+ttbf.ost <- ttestBF(agg.data$mean.resp[agg.data$condition == "ost"], mu = 0.5, alternative = "two.sided")
+ttbf.non <- ttestBF(agg.data$mean.resp[agg.data$condition == "non"], mu = 0.5, alternative = "two.sided")
+ttbf.oc <- ttestBF(agg.data$mean.resp[agg.data$condition == "odour"], mu = 0.5, alternative = "two.sided")
+
+extractBF(ttbf.ost)$bf
+extractBF(ttbf.non)$bf
+extractBF(ttbf.oc)$bf
+```
+The dogs (N = 61) performed significantly better than expected by chance in the ostensive condition (mean = `r round(tt.ost$estimate, 2)`, 95% CI [`r round(tt.ost$conf.int[1],2)`, `r round(tt.ost$conf.int[2],2)`], *t*(`r tt.ost$parameter`)=`r round(tt.ost$statistic,2)`, *p*=`r round(tt.ost$p.value,3)`, *BF*=`r round(extractBF(ttbf.ost)$bf, 2)`) but not in the non-ostensive condition (mean = `r round(tt.non$estimate, 2)`, 95% CI [`r round(tt.non$conf.int[1],2)`, `r round(tt.non$conf.int[2],2)`], *t*(`r tt.non$parameter`)=`r round(tt.non$statistic,2)`, *p*=`r round(tt.non$p.value,3)`, *BF*=`r round(extractBF(ttbf.non)$bf, 2)`) or the odor control condition (mean = `r round(tt.oc$estimate, 2)`, 95% CI [`r round(tt.oc$conf.int[1],2)`, `r round(tt.oc$conf.int[2],2)`], *t*(`r tt.oc$parameter`)=`r round(tt.oc$statistic,2)`, *p*=`r round(tt.oc$p.value,3)`, *BF*=`r round(extractBF(ttbf.oc)$bf, 2)`). 
 
 
 ### Generalised linear mixed model
