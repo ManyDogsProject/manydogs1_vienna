@@ -50,7 +50,7 @@ prereg.data <- read.csv("data/md1_data_vienna_long.csv") %>%
   droplevels()
 
 summary(prereg.data)
-#view(dfSummary(prereg.data))
+view(dfSummary(prereg.data))
 ```
 
 ### Aggregating data
@@ -58,9 +58,13 @@ summary(prereg.data)
 ```{r include = FALSE}
 
 agg.data <- prereg.data  %>%
-  group_by(subject_ID, condition) %>%
+  group_by(subject_ID, sex, breed, age, condition) %>%
   summarise(mean.resp = mean(response)) %>%
   ungroup()
+
+#demographics:
+agg.data%>%filter(condition=="ost")%>%
+  summarise(mean.age = mean(age), min.age = min(age), max.age = max(age), sd.age = sd(age), females=sum(sex=="F"), males=sum(sex=="M"))
 
 summary.data <- agg.data %>%
   group_by(condition) %>%
@@ -231,9 +235,13 @@ summary(all.data)
 ```{r include = FALSE}
 
 agg.data.all <- all.data %>%
-  group_by(subject_ID, condition) %>%
+  group_by(subject_ID, sex, breed, age, condition) %>%
   summarise(mean.resp = mean(response)) %>%
   ungroup()
+
+#demographics:
+agg.data.all%>%filter(condition=="ost")%>%
+  summarise(mean.age = mean(age), min.age = min(age), max.age = max(age), sd.age = sd(age), females=sum(sex=="F"), males=sum(sex=="M"))
 
 summary.data.all <- agg.data.all %>%
   group_by(condition) %>%
