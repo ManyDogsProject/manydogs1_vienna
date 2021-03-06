@@ -180,7 +180,7 @@ Table: Results of GLMM of the dogs' choice performance in Experiment 1
 | Sex                       | -0.084   | 0.137 | -0.361 | 0.184 | 0.371 | 1  | 0.543 |
 | Age                       | -0.012   | 0.067 | -0.140 | 0.121 | 0.033 | 1  | 0.855 |
 | C-BARQ trainability score | 0.095    | 0.067 | -0.034 | 0.236 | 1.957 | 1  | 0.162 |
-Notes: Reference categories: condition: non-ostensive condition; order of condition: non-ostensive condition first; sex: female; covariates trial number, age, and training experienced centered and scaled to a standard deviation of 1.
+Notes: Reference categories: condition: non-ostensive condition; order of condition: non-ostensive condition first; sex: female; covariates trial number, age, and training experienced centered and scaled to a standard deviation of 1. The standard deviations for the contribution of the random effects were 0.099 for the random intercept of subject, 0.159 for the random slope of condition within subject, and 0.063 for the random slope of trial number within subject.
 
 ```{r include=FALSE}
 ### Check assumptions
