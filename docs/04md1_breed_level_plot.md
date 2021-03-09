@@ -1,9 +1,7 @@
----
-title: "MD1 - breed figure"
-output: github_document
----
+MD1 - breed figure
+================
 
-```{r setup, message=FALSE}
+``` r
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
@@ -12,18 +10,19 @@ library(here)
 library(plotrix)
 library(RColorBrewer)
 ```
+
 ## Preregistered data
 
 ### Read data
 
-```{r loading data}
+``` r
 prereg.data <- read.csv(here('data','md1_data_vienna_long.csv')) %>%
   filter(preregistered_data=='after_prereg') #only data that were collected after preregistration
-  
 ```
 
 ### Aggregate breed level data
-```{r aggregate breed level data, message = FALSE}
+
+``` r
 breed.means <- prereg.data %>%
   filter(condition != "odour", condition != "w_2cp_vd") %>% #only test conditions
   group_by(subject_ID, breed, condition) %>%
@@ -32,13 +31,14 @@ breed.means <- prereg.data %>%
   group_by(condition, breed) %>%
   summarise(mean = mean(mean.resp, na.rm = T), sem = std.error(mean.resp, na.rm = T)) %>%
   pivot_wider(id_cols = breed, names_from = condition, values_from = c(mean, sem))
-
 ```
 
 ### Load cladogram file and align names for plot
-White Swiss Shepherd Dogs descend from white colored GSD and for purposes of the cladogram will be treated as GSD
 
-```{r, load cladogram, message = FALSE}
+White Swiss Shepherd Dogs descend from white colored GSD and for
+purposes of the cladogram will be treated as GSD
+
+``` r
 load(here('data','dog_tree.RData')) #cladogram
 my.names <- read_csv(here('data','tree_names.csv'))
 # Obnoxiously for some of the plot functions I can't have spaces in the names
@@ -54,22 +54,23 @@ breed.means <- breed.means[match(dog.tree$tip.label, breed.means$tip),]
 ```
 
 ### Make plots on tree
-Here's a barplot option.  Getting error bars is not easy and i can spend some time trying to figure it out if people like this approach
-```{r barplot and tree, message = FALSE, results = 'hide'}
+
+Here’s a barplot option. Getting error bars is not easy and i can spend
+some time trying to figure it out if people like this approach
+
+``` r
 plot.data <- breed.means %>% select(mean_non, mean_ost, tip) %>% column_to_rownames(var = "tip") %>% rename(ostensive = mean_ost, nonostensive = mean_non) %>% as.matrix()
 dog.chronos <- chronos(dog.tree)
 plotTree.barplot(dog.chronos, plot.data, args.barplot = list(beside=TRUE, space = c(0,1.2), col = c('blue', 'red'), legend.text = TRUE,args.legend = list(x = 0.65, y = 33, bty = 'n', horiz = T)))
-
 ```
+
+![](04md1_breed_level_plot_files/figure-gfm/barplot%20and%20tree-1.png)<!-- -->
 
 Or alternatively, here is a heatmap
 
-```{r heatmap}
+``` r
 my.colors = colorRampPalette(brewer.pal(9,"YlOrRd"))(500)
 phylo.heatmap(dog.tree, plot.data, split = c(0.5,0.3), fsize = c(1,1,0.75), colors = my.colors, grid = T, xlim = c(-0.5,1.5), ylim = c(-0.25,1.4), mar = c(1,1,1,1), standardize = F)
 ```
 
-
-
-
-
+![](04md1_breed_level_plot_files/figure-gfm/heatmap-1.png)<!-- -->
