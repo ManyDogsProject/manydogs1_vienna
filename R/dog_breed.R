@@ -55,8 +55,7 @@ cog_plot <- ggplot(dog_breed_mean, aes(x = mean, y = condition, color = conditio
         legend.title = element_blank(),
         legend.position = 'top',
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()
-        )
+        panel.grid.minor = element_blank())
  
 plot_grid(dog_breed_tree, cog_plot, align = 'hv', axis = 'bt')
 
