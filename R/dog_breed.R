@@ -41,6 +41,9 @@ dog_breed_mean <- prereg.data %>%
   mutate(breed = factor(breed, levels = c("Australian_Shepherd", "Border_Collie", "Rhodesian_Ridgeback", "Labrador_Retriever", "Golden_Retriever", "White Swiss Shepherd Dog", "JP_Russell_Terrier", "Samoyed", "Siberian_Husky"))) %>% 
   drop_na()
 
+dog_breed_mean$condition[dog_breed_mean$condition == 'ost'] <- 'ostensive'
+dog_breed_mean$condition[dog_breed_mean$condition == 'non'] <- 'non-ostensive'
+ 
 cog_plot <- ggplot(dog_breed_mean, aes(x = mean, y = condition, color = condition)) +
   facet_wrap(~breed, ncol = 1, strip.position = "right") +
   geom_jitter(height = 0.1, size = 2, alpha = 0.5) +
