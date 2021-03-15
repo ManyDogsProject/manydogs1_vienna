@@ -141,7 +141,7 @@ od_plot_prereg <- ggplot(data = agg.data.prereg3, aes(x = as.numeric(condition),
   # Define additional settings
   xlab("") +
   ylab("Proportion correct") +
-  scale_x_continuous(breaks = c(2), labels = c("Odour control"), limits = c(1.5, 2.3)) +
+  scale_x_continuous(breaks = c(2), labels = c("Odor control"), limits = c(1.5, 2.3)) +
   ylim(0, 1) +
   theme_classic()
 
@@ -150,7 +150,7 @@ od_plot_prereg
 # ggsave(md_plot, filename = "graphs/md1_plot.png", width = 10, height = 8, scale=0.5)
 ```
 
-```{r}
+```{r fig.cap="Violin and dot plot of dogs' performance (N=61) across the non-ostensive and ostensive test conditions (A) and the odor control condition (B) of Experiment 1. The red dashed lines show the hypothetical chance level of 0.5. The transparent dots represent the mean proportion correct for each individual. The grey lines connect dots representing the same individuals. The error bars are 95% confidence intervals based on a parametric bootstrap; the filled circles on top of the error bars show the fitted model. The figure was created in R using the R packages ggplot [@wickham.2016] and raincloudplots [@allen.2021]."}
 
 pg <- plot_grid(md_plot_prereg, od_plot_prereg, rel_widths = c(2, 1), labels = c("A", "B"))
 
