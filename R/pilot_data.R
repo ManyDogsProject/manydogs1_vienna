@@ -16,8 +16,8 @@ library(here)
 
 # Source functions --------------------------------------------------------
 
-source(here("R/functions/glmm_stability.R"))
-source(here("R/functions/boot_glmm.R"))
+# source(here("R/functions/glmm_stability.R"))
+# source(here("R/functions/boot_glmm.R"))
 
 
 # Input and process data --------------------------------------------------

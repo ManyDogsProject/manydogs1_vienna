@@ -3,26 +3,18 @@ title: "MD1 - CDL data analysis"
 author: ""
 date: "February 21, 2021"
 output:
-  pdf_document: default
-  html_document: default
+  pdf_document: 
+    fig_caption: true
 ---
 
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 
-rm(list = ls())
-
-library(tidyverse)
-library(psych)
-library(summarytools)
-library(lme4)
-library(car)
-library(BayesFactor)
-library(bayestestR)
 library(papaja)
 library(kableExtra)
+library(rmarkdown)
 library(here)
 
 # source("./functions/glmm_stability.r")
@@ -32,38 +24,40 @@ library(here)
 source(here("R/pilot_data.R"))
 ```
 
-## Hypothesis
-ManyDogs 1 aims to investigate how dogs perceive human pointing gestures. Our specific question is: Do dogs understand and act on human pointing as though it is a social communicative gesture?
-While studies of dogs following pointing are numerous, there is ongoing debate in the field of Canine Science about whether dogs perceive pointing gestures as peremptory and follow them much like they would a verbal command, or as socially communicative cues. We will address this question and investigate whether dogs understand and act on pointing as a social communicative gesture by comparing a condition in which pointing is prefaced by ostensive cues (intentional gaze, name calling verbal cues) to a condition in which it is not (gaze avoidance, no verbal cues). 
-
-### Condition predictions
-i) We predict that if dogs perceive pointing gestures as commands, as a group they would follow the gesture above chance in both experimental conditions. Moreover, we would expect there to be no significant differences between point-following by dogs in the two experimental conditions. 
-ii) We predict that if dogs perceive pointing gestures as socially communicative cues, they would perform significantly better in the ostensive condition than in the non-ostensive condition. 
-iii) We predict that in the odor control task that dogs will not differ significantly from the hypothetical chance level of 0.5.
-
-## Analysis
+# Analysis
 
 We pre-registered the study design, procedure, predictions, and confirmatory analysis prior to data collection at the Open Science Framework (https://osf.io/gz5pj/). The data and analysis script is available in an associated online repository at https://github.com/ManyDogsProject/manydogs1_vienna.git.  
-To evaluate whether the dogs' performance deviated significantly from the hypothetical chance level of 0.5 in the ostensive, non-ostensive, and odor control condition we first aggregated the data across trials for each individual and condition. We then conducted conducted one-sample t-tests to compare the performance against chance. We calculated Bayes factors using the function 'ttestBF' of the BayesFactor package [@Morey.2018].   
-To compare the performance between the test conditions (ostensive, non-ostensive) we fitted a Generalised Linear Mixed Model (GLMM) with binomial error distribution and logit link function using the function 'glmer' of the lme4 package [@Bates.2015]. We included the predictor variables condition, order of condition (ostensive first, non-ostensive first), the trial number within condition, sex, age (in years), dogs' trainability score based on the c-BARQ questionnaire [@Hsu.2003]. Additionally, we included the random intercept of subject ID and the random slopes of condition and trial number within subject ID.  
-All covariates were centered and scaled to a standard deviation of 1. The random slope components of the factors were centered (to ensure that the results were not conditional on the choice of the reference category). Confidence intervals for the predictors were derived based on 1000 parametric bootstraps using a function kindly provided by Roger Mundry (based on the 'bootMer' function of the package lme4). In order to check for collinearity issues, we determined variance inflation factors (VIF) using the function 'vif' (R package car, @Fox.2019). Collinearity was no issue (maximum VIF: 1.02). To evaluate the model stability we dropped one level of the subject ID random effect at a time and compared the model estimates of the resulting models (using a function kindly provided by Roger Mundry). This procedure revealed the model to be stable with respect to the fixed effects.
-As inference criterion, we used p-values below .05 (two-tailed) for the one-sample t-tests. For the GLMM, we used likelihood ratio tests (R function drop1 with argument 'test' set to "Chisq", @Barr.2013) with p-values smaller than .05 as criterion to make inferences about fixed effects.
+
+To evaluate whether the dogs' performance deviated significantly from the hypothetical chance level of 0.5 in the ostensive, non-ostensive, and odor control condition we first aggregated the data across trials for each individual and condition. We then conducted conducted one-sample t-tests to compare the performance against chance. We calculated Bayes factors using the `ttestBF()` function from the _BayesFactor_ package [@Morey.2018].   
+
+To compare the performance between the test conditions (ostensive, non-ostensive) we fitted a Generalised Linear Mixed Model (GLMM) with binomial error distribution and logit link function using the function 'glmer' of the lme4 package [@Bates.2015]. We included the predictor variables condition, order of condition (ostensive first, non-ostensive first), the trial number within condition, sex, age (in years), dogs' trainability score based on the C-BARQ questionnaire [@Hsu.2003]. Additionally, we included the random intercept of subject ID and the random slopes of condition and trial number within subject ID.  
+
+All covariates were centered and scaled to a standard deviation of 1. The random slope components of the factors were centered (to ensure that the results were not conditional on the choice of the reference category). Confidence intervals for the predictors were derived based on 1000 parametric bootstraps using a function kindly provided by Roger Mundry (based on the `bootMer()` function of the package _lme4_). In order to check for collinearity issues, we determined variance inflation factors (VIF) using the function `vif()` (R package _car_, @Fox.2019). Collinearity was no issue (maximum VIF: 1.02). To evaluate the model stability we dropped one level of the subject ID random effect at a time and compared the model estimates of the resulting models (using a function kindly provided by Roger Mundry). This procedure revealed the model to be stable with respect to the fixed effects.
+
+As inference criterion, we used p-values below .05 (two-tailed) for the one-sample t-tests. For the GLMM, we used likelihood ratio tests (R function `drop1()` with argument 'test' set to "Chisq", @Barr.2013) with p-values smaller than .05 as criterion to make inferences about fixed effects. 
+
+Bayes factors for the models were calculated from Bayesian models using the `brm()` function from the _brms_ package [@R-brms]. We used default, non-informative priors, 12,000 iterations per chain (of which 2,000 were warm-up iterations), and 4 chains for the Bayesian models. We then used the `bayes_factor()` function to compare models, with 10 repetitions using bridge sampling [@R-bridge_sampler]. For the GLMM, Bayes factors represent the evidence for the full model over the full model without the fixed effect under investigation.
 
 
 
-## Results  
+# Results  
 
 
-### One-sample t-test to compare against chance level
+## One-sample t-test to compare against chance level
 
-The dogs (N = `r num_subjects`) performed significantly better than expected by chance in the ostensive condition (`r apa_print(tt.ost)$full_result`, `r apa_print(ttbf.ost)$statistic`) but not in the non-ostensive condition (`r apa_print(tt.non)$full_result`, `r apa_print(ttbf.non)$statistic`) or the odor control condition (`r apa_print(tt.oc)$full_result`, `r apa_print(ttbf.oc)$statistic`). 
+The dogs (N = `r num_subjects`) performed significantly better than expected by chance in the ostensive condition (`r apa_print(tt.ost)$full_result`, `r apa_print(ttbf.ost)$statistic`) but not in the non-ostensive condition (`r apa_print(tt.non)$full_result`, `r apa_print(ttbf.non)$statistic`) or the odor control condition (`r apa_print(tt.oc)$full_result`, `r apa_print(ttbf.oc)$statistic`) (Figure \ref{fig:cond-chance}).
+
+```{r cond-chance, fig.cap = "Violin and dot plot of dogs' performance (N=61) across the non-ostensive and ostensive test conditions (A) and the odor control condition (B) of Experiment 1. The red dashed lines show the hypothetical chance level of 0.5. The transparent dots represent the mean proportion correct for each individual. The grey lines connect dots representing the same individuals. The error bars are 95\\% confidence intervals based on a parametric bootstrap; the filled circles on top of the error bars show the fitted model.", fig.align = "center", out.width = "60%"}
+knitr::include_graphics(path = here("graphs/md1_plot_prereg_w_oc.png"))
+```
 
 
-### Generalised linear mixed model
+
+## Generalised linear mixed model
 
 
-The dogs were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r drop1_full_model["condition", "npar"]`) = `r printnum(drop1_full_model["condition", "LRT"])`, p = `r printp(drop1_full_model["condition", "Pr(Chi)"])`). The control predictors order of condition, trial number (within condition), sex, age, or the C-BARQ trainability score had no significant effect on dogs' choices (Table \ref{tab:glmm-table}).
+The dogs were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r drop1_full_model["condition", "npar"]`) = `r printnum(drop1_full_model["condition", "LRT"])`, p = `r printp(drop1_full_model["condition", "Pr(Chi)"])`) (Figure \ref{fig:cond-chance}A). The control predictors order of condition, trial number (within condition), sex, age, or the C-BARQ trainability score had no significant effect on dogs' choices (Table \ref{tab:glmm-table}).
 
 ```{r glmm-table, echo = FALSE}
-apa_table(model_table, caption = "Results of GLMM of the dogs' choice performance in Experiment 1", note = "Reference categories: condition: non-ostensive condition; order of condition: non-ostensive condition first; sex: female; covariates trial number, age, and training experienced centered and scaled to a standard deviation of 1. The standard deviations for the contribution of the random effects were 0.099 for the random intercept of subject, 0.159 for the random slope of condition within subject, and 0.063 for the random slope of trial number within subject.", col.names = c("", "Estimate", "SE", "Lower CI", "Upper CI", "$\\chi^{2}$", "df", "p", "$BF_{10}$"), align = c("l", rep("r", 8)), placement = "h")
+apa_table(model_table, caption = "Results of GLMM of the dogs' choice performance", note = "Reference categories: condition: non-ostensive condition; order of condition: non-ostensive condition first; sex: female; covariates trial number, age, and training experienced centered and scaled to a standard deviation of 1. The standard deviations for the contribution of the random effects were 0.099 for the random intercept of subject, 0.159 for the random slope of condition within subject, and 0.063 for the random slope of trial number within subject.", col.names = c("", "Estimate", "SE", "Lower CI", "Upper CI", "$\\chi^{2}$", "df", "p", "$BF_{10}$"), align = c("l", rep("r", 8)), placement = "h")
 ```
