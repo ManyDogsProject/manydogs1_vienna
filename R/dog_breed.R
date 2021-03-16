@@ -46,8 +46,8 @@ dog_breed_mean$condition[dog_breed_mean$condition == 'non'] <- 'non-ostensive'
  
 cog_plot <- ggplot(dog_breed_mean, aes(x = mean, y = condition, color = condition)) +
   facet_wrap(~breed, ncol = 1, strip.position = "right") +
-  geom_jitter(height = 0.1, size = 2, alpha = 0.5) +
-  stat_summary(size = 1.05) +
+  geom_jitter(size = 2, shape = 2, height = 0.3, width = 0) +
+  stat_summary(size = 1.05, alpha = 0.5) +
   geom_vline(xintercept = 0.5, linetype = "dashed", color = 'red') +
   labs(y = "", x = "proportion correct") +
   scale_color_brewer(palette = 'Set2') +
@@ -61,6 +61,9 @@ cog_plot <- ggplot(dog_breed_mean, aes(x = mean, y = condition, color = conditio
         panel.grid.minor = element_blank())
  
 plot_grid(dog_breed_tree, cog_plot, align = 'hv', axis = 'bt')
+
+# Figure caption: Performance in the ostensive and non-ostensive conditions by breed. Triangles reflect the performance of individual dogs and points are vertically jittered to avoid overplotting. The circles and error bars reflect the mean and standard error of the mean within each breed and condition. The dashed red line indicates the null expectation of 0.50. The cladogram of dog breeds was adapted from Parker et al. 2017.
+# Reference: Parker, H. G., Dreger, D. L., Rimbault, M., Davis, B. W., Mullen, A. B., Carpintero-Ramirez, G., & Ostrander, E. A. (2017). Genomic analyses reveal the influence of geographic origin, migration, and hybridization on modern dog breed development. Cell reports, 19(4), 697-708.
 
 
 ggsave(here("graphs/dog_breed_means.png"), width = 11, height = 8)
