@@ -40,11 +40,18 @@ iii) We predict that in the odor control task that dogs will not differ signific
 ## Analysis
 
 We pre-registered the study design, procedure, predictions, and confirmatory analysis prior to data collection at the Open Science Framework (https://osf.io/gz5pj/). The data and analysis script is available in an associated online repository at https://github.com/ManyDogsProject/manydogs1_vienna.git.  
-To evaluate whether the dogs' performance deviated significantly from the hypothetical chance level of 0.5 in the ostensive, non-ostensive, and odor control condition we first aggregated the data across trials for each individual and condition. We then conducted conducted one-sample t-tests to compare the performance against chance. We calculated Bayes factors using the function 'ttestBF' of the BayesFactor package [@Morey.2018].   
-To compare the performance between the test conditions (ostensive, non-ostensive) we fitted a Generalised Linear Mixed Model (GLMM) with binomial error distribution and logit link function using the function 'glmer' of the lme4 package [@Bates.2015]. We included the predictor variables condition, order of condition (ostensive first, non-ostensive first), the trial number within condition, sex, age (in years), dogs' trainability score based on the c-BARQ questionnaire [@Hsu.2003]. Additionally, we included the random intercept of subject ID and the random slopes of condition and trial number within subject ID.  
-All covariates were centered and scaled to a standard deviation of 1. The random slope components of the factors were centered (to ensure that the results were not conditional on the choice of the reference category). Confidence intervals for the predictors were derived based on 1000 parametric bootstraps using a function kindly provided by Roger Mundry (based on the 'bootMer' function of the package lme4). In order to check for collinearity issues, we determined variance inflation factors (VIF) using the function 'vif' (R package car, @Fox.2019). Collinearity was no issue (maximum VIF: 1.02). To evaluate the model stability we dropped one level of the subject ID random effect at a time and compared the model estimates of the resulting models (using a function kindly provided by Roger Mundry). This procedure revealed the model to be stable with respect to the fixed effects.
-As inference criterion, we used p-values below .05 (two-tailed) for the one-sample t-tests. For the GLMM, we used likelihood ratio tests (R function drop1 with argument 'test' set to "Chisq", @Barr.2013) with p-values smaller than .05 as criterion to make inferences about fixed effects.
 
+To evaluate whether the dogs' performance deviated significantly from the hypothetical chance level of 0.5 in the ostensive, non-ostensive, and odor control condition we first aggregated the data across trials for each individual and condition. We then conducted conducted one-sample t-tests to compare the performance against chance. We calculated Bayes factors using the `ttestBF()` function from the _BayesFactor_ package [@Morey.2018].   
+
+To compare the performance between the test conditions (ostensive, non-ostensive) we fitted a Generalised Linear Mixed Model (GLMM) with binomial error distribution and logit link function using the function 'glmer' of the lme4 package [@Bates.2015]. We included the predictor variables condition, order of condition (ostensive first, non-ostensive first), the trial number within condition, sex, age (in years), dogs' trainability score based on the C-BARQ questionnaire [@Hsu.2003]. Additionally, we included the random intercept of subject ID and the random slopes of condition and trial number within subject ID.  
+
+In a secondary, exploratory analysis, we also included pilot data collected prior to the preregistration. We fitted another GLMM only with purebred dogs to account for breed differences in the model. Only breeds with at least 8 individuals in the data set were considered (N = 68; number of breeds: 6), namely Australian Shepherds, Border Collies, Golden Retrievers, Jack Russell / Parson Russell Terriers, Labrador Retrievers, and Rhodesian Ridgebacks. We added the same fixed and random effects as before. Additionally, we also entered breed ID as a random intercept and all random slopes within breed ID.
+
+All covariates were centered and scaled to a standard deviation of 1. The random slope components of the factors were centered (to ensure that the results were not conditional on the choice of the reference category). Confidence intervals for the predictors were derived based on 1000 parametric bootstraps using a function kindly provided by Roger Mundry (based on the `bootMer()` function of the package _lme4_). In order to check for collinearity issues, we determined variance inflation factors (VIF) using the function `vif()` (R package _car_, @Fox.2019). Collinearity was no issue (maximum VIF: 1.02). To evaluate the model stability we dropped one level of the subject ID random effect at a time and compared the model estimates of the resulting models (using a function kindly provided by Roger Mundry). This procedure revealed the models to be stable with respect to the fixed effects.
+
+As inference criterion, we used p-values below .05 (two-tailed) for the one-sample t-tests. For the GLMM, we used likelihood ratio tests (R function `drop1()` with argument 'test' set to "Chisq", @Barr.2013) with p-values smaller than .05 as criterion to make inferences about fixed effects. 
+
+Bayes factors for the models were calculated from Bayesian models using the `brm()` function from the _brms_ package [@R-brms]. We used default, non-informative priors, 12,000 iterations per chain (of which 2,000 were warm-up iterations), and 4 chains for the Bayesian models. We then used the `bayes_factor()` function to compare models, with 10 repetitions using bridge sampling [@R-bridge_sampler]. For the GLMM, Bayes factors represent the evidence for the full model over the full model without the fixed effect under investigation.
 
 
 ## Results  
@@ -72,6 +79,9 @@ agg.data <- prereg.data  %>%
 #demographics:
 agg.data%>%filter(condition=="ost")%>%
   summarise(mean.age = mean(age), min.age = min(age), max.age = max(age), sd.age = sd(age), females=sum(sex=="F"), males=sum(sex=="M"))
+
+agg.data%>%filter(condition=="ost")%>% group_by(breed)%>%
+  summarise(n.breeds = n())
 
 summary.data <- agg.data %>%
   group_by(condition) %>%
@@ -264,6 +274,9 @@ agg.data.all <- all.data %>%
 agg.data.all%>%filter(condition=="ost")%>%
   summarise(mean.age = mean(age), min.age = min(age), max.age = max(age), sd.age = sd(age), females=sum(sex=="F"), males=sum(sex=="M"))
 
+agg.data.all%>%filter(condition=="ost")%>% group_by(breed)%>%
+  summarise(n.breeds = n())
+
 summary.data.all <- agg.data.all %>%
   group_by(condition) %>%
   summarise(mean.resp2 = mean(mean.resp), median.resp = median(mean.resp), sd = sd(mean.resp), se = sd(mean.resp) / sqrt(length(mean.resp)))
@@ -355,7 +368,7 @@ vif(xx2)
 ### Model stability
 One subject at a time excluded to assess the impact of outliers. 
 ```{r eval=FALSE}
-m.stab.b.mm2 <- glmm.model.stab(model.res = mm1, use = c("subject_ID"))
+m.stab.b.mm2 <- glmm.model.stab(model.res = mm2, use = c("subject_ID"))
 m.stab.b.mm2$detailed$warnings
 xx2 <- as.data.frame(round(m.stab.b$summary[, -1], 3))
 png("graphs/mm2_stability_plot.png")
@@ -388,3 +401,105 @@ write.csv(mm2.pred.con.ci$ci.predicted, file = "data/mm2_predicted_ci_for_condit
 ```{r}
 #save.image("md1_vienna_glmm_workspace.RData")
 ```
+
+
+### Breed model
+
+```{r}
+# centering variables for modeling
+
+model.data.breed <- all.data %>%
+  filter(condition == "ost" | condition == "non") %>%
+  filter(breed!="MIX", breed!="Samoyed", breed!="White Swiss Shepherd Dog", breed!="Siberian_Husky")%>% #removing breeds with N<8
+  mutate(
+    z.age = as.numeric(scale(age, scale = T, center = T)),
+    sex.c = as.numeric(scale(as.numeric(as.factor(sex)), scale = F, center = T)),
+    condition.c = as.numeric(scale(as.numeric(as.factor(condition)), scale = F, center = T)),
+    condition_order.c = as.numeric(scale(as.numeric(as.factor(condition_order)), scale = F, center = T)),
+    z.trial_num = as.numeric(scale(trial_num, scale = T, center = T)),
+    z.training_experience = as.numeric(scale(dog_training_experience, scale = T, center = T))
+  )
+
+#view(dfSummary(model.data.breed))
+```
+```{r}
+contr <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 10000000))
+
+mm3 <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed),
+  family = binomial, data = model.data.breed, control = contr
+)
+```
+*Likelihood ratio test*
+```{r}
+drop1.mm3<-drop1(mm3, test = "Chisq", control = contr) 
+round(drop1.mm3, 3)
+```
+
+*Estimates of the fixed effects*  
+```{r}
+round(summary(mm3)$coefficients, 3)
+```
+
+*Random effects* 
+```{r}
+summary(mm3)$varcor
+```
+
+*Calculating confidence intervals with 1000 bootstraps*
+```{r eval=FALSE}
+# perform bootstraps for all predictors
+boot.res.mm3 <- boot.glmm.pred(model.res = mm3, excl.warnings = T, nboots = 1000, para = T, level = 0.95, n.cores="all-1")
+```
+
+```{r}
+round(boot.res.mm3$ci.estimates, 3)
+```
+
+*Model table*
+```{r}
+pred.names = tibble(effect=c("(Intercept)", "Condition", "Order of condition", "Trial number", "Sex", "Age", "C-BARQ trainability score"))
+
+model_table.mm3 <- bind_cols(as.data.frame(summary(mm3)$coefficients),
+                         drop1.mm3,
+                         boot.res.mm3$ci.estimates,
+                         pred.names) %>% #,model_bfs
+  select(effect, Estimate, SE = `Std. Error`, LowerCI = X2.5., UpperCI = X97.5., Chi2 = LRT, df = npar, p = `Pr(Chi)`) %>%#, bf
+  mutate(across(.cols = c(p), ~ round(.x, 3))) %>% #bf
+  mutate(across(.cols = c(Estimate:Chi2), ~ round(.x, 2))) %>% 
+  mutate(across(Chi2:p, ~replace_na(.x, ""))) %>% #:bf
+  remove_rownames()
+```
+```{r}
+
+model_table.mm3.re <-as.data.frame(VarCorr(mm3))%>%
+  filter(is.na(var2))%>%
+  select("Random.intercept" = grp, "Random.slope" = var1, "SD" = sdcor)%>%
+  mutate(across(.cols = c(SD), ~ round(.x, 2)))%>%
+  mutate(Random.intercept=fct_recode(Random.intercept,  "Subject"="subject_ID", "Breed"="breed"), Random.slope=fct_recode(Random.slope,  "Condition"="condition.c", "Trial number"="z.trial_num",  "Order of conditions"="condition_order.c",  "Sex"="sex.c",  "Age"="z.age",  "C-BARQ trainability score"="z.training_experience"))
+```
+We then fitted a second model only with purebred dogs and including breed as a random effect (as well as all possible random slopes within breed). This model confirmed the results of the first model: dogs of the six included breeds were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r round(drop1.mm3["condition", "npar"],3)`)=`r round(drop1.mm3["condition", "LRT"],3)`, p = `r round(drop1.mm3["condition", "Pr(Chi)"],3)`). The control predictors order of condition, trial number (within condition), sex, age, or the C-BARQ trainability score had no significant effect on dogs' choices. The standard deviations for the contribution of the random effects of breed were small in comparison to the standard deviations of the random effects within subject ID. 
+
+### Check assumptions
+```{r}
+# check for colliniarity
+xx3 <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
+  data = model.data.breed
+)
+vif(xx3)
+```
+### Model stability
+One subject at a time excluded to assess the impact of outliers. 
+```{r eval=FALSE}
+m.stab.b.mm3 <- glmm.model.stab(model.res = mm3, use = c("subject_ID", "breed"))
+m.stab.b.mm3$detailed$warnings
+xx2 <- as.data.frame(round(m.stab.b$summary[, -1], 3))
+png("graphs/mm3_stability_plot.png")
+m.stab.plot(round(m.stab.b.mm3$summary[, -1], 3))
+dev.off()
+```
+
+```{r}
+m.stab.plot(round(m.stab.b.mm3$summary[, -1], 3))
+```
+
+
