@@ -109,7 +109,7 @@ drop1_full_model <- drop1(full_model, test = "Chisq", control = contr)
 summary(full_model)$varcor
 
 
-# _Bootstrap 95% CIs ------------------------------------------------------
+## Bootstrap 95% CIs ------------------------------------------------------
 # #*Calculating confidence intervals with 1000 bootstraps*
 # #perform bootstraps for all predictors
 # full_model_boot_ci <- boot.glmm.pred(model.res = full_model, excl.warnings = T, nboots = 1000, para = T, n.cores="all-1", level = 0.95)
@@ -119,7 +119,7 @@ full_model_boot_ci <- read_csv(here("R/full_model_boot_ci.csv"))
 # round(full_model_boot_ci$ci.estimates, 3)
 
 
-# _Bayes factors ----------------------------------------------------------
+## Bayes factors ----------------------------------------------------------
 
 # ncores = parallel::detectCores()
 # rstan_options(auto_write = TRUE)
@@ -156,7 +156,7 @@ full_model_boot_ci <- read_csv(here("R/full_model_boot_ci.csv"))
 # write_csv(model_bfs, here("R/model_bfs.csv"))
 model_bfs <- read_csv(here("R/model_bfs.csv"))
 
-# _Build table ------------------------------------------------------------
+## Build table ------------------------------------------------------------
 
 model_table <- bind_cols(as.data.frame(summary(full_model)$coefficients),
                          drop1_full_model,
@@ -167,7 +167,7 @@ model_table <- bind_cols(as.data.frame(summary(full_model)$coefficients),
   mutate(across(Chi2:bf, ~replace_na(.x, ""))) %>% 
   remove_rownames()
 
-# # _Check assumptions -------------------------------------------------------
+# ## Check assumptions -------------------------------------------------------
 # 
 # # Plot visualizations of model checks
 # check_model(full_model)
@@ -207,3 +207,121 @@ model_table <- bind_cols(as.data.frame(summary(full_model)$coefficients),
 ## write.csv(pred.con.ci$ci.predicted, file = "data/full_model_predicted_ci_for_conditionMD1_Vienna.csv")
 
 
+# Breed analysis ----------------------------------------------------------
+
+breed_data <- prereg_data %>%
+  filter(condition == "ost" | condition == "non") %>%
+  filter(breed!="MIX", breed!="Samoyed", breed!="White Swiss Shepherd Dog", breed!="Siberian_Husky")%>% #removing breeds with N<8
+  mutate(
+    z.age = as.numeric(scale(age, scale = T, center = T)),
+    sex.c = as.numeric(scale(as.numeric(as.factor(sex)), scale = F, center = T)),
+    condition.c = as.numeric(scale(as.numeric(as.factor(condition)), scale = F, center = T)),
+    condition_order.c = as.numeric(scale(as.numeric(as.factor(condition_order)), scale = F, center = T)),
+    z.trial_num = as.numeric(scale(trial_num, scale = T, center = T)),
+    z.training_experience = as.numeric(scale(dog_training_experience, scale = T, center = T))
+  )
+
+contr <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 10000000))
+
+breed_model <- glmer(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed),
+             family = binomial, data = breed_data, control = contr
+)
+
+drop1_breed_model<-drop1(breed_model, test = "Chisq", control = contr) 
+round(drop1_breed_model, 3)
+round(summary(breed_model)$coefficients, 3)
+
+summary(breed_model)$varcor
+
+
+## Bootstrap 95% CIs ------------------------------------------------------
+# perform bootstraps for all predictors
+# breed_model_boot_ci <- boot.glmm.pred(model.res = breed_model, excl.warnings = T, nboots = 1000, para = T, level = 0.95, n.cores="all-1")
+# write_csv(breed_model_boot_ci$ci.estimates, here("R/breed_model_boot_ci.csv"))
+breed_model_boot_ci <- read_csv(here("R/breed_model_boot_ci.csv"))
+
+round(boot.res_breed_model$ci.estimates, 3)
+
+
+## Bayes factors ----------------------------------------------------------
+
+ncores = parallel::detectCores()
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+bayes_breed_full <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+bayes_breed_nocondition <- brm(response ~ condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(condition_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nocondition, repetitions = 10, silent = TRUE))
+
+bayes_breed_noconditionorder <- brm(response ~ condition + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(order_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noconditionorder, repetitions = 10, silent = TRUE))
+
+bayes_breed_notrialnum <- brm(response ~ condition + condition_order + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(trialnum_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notrialnum, repetitions = 10, silent = TRUE))
+
+bayes_breed_nosex <- brm(response ~ condition + condition_order + z.trial_num + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(sex_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nosex, repetitions = 10, silent = TRUE))
+
+bayes_breed_noage <- brm(response ~ condition + condition_order + z.trial_num + sex + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(age_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noage, repetitions = 10, silent = TRUE))
+
+bayes_breed_notraining <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+
+(training_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notraining, repetitions = 10, silent = TRUE))
+
+model_breed_bfs <- tibble(effect = c("(Intercept)", "Condition", "Order of condition", "Trial number", "Sex", "Age", "C-BARQ trainability score"), bf = c(NA, condition_breed_bf$bf_median_based, order_breed_bf$bf_median_based, trialnum_breed_bf$bf_median_based, sex_breed_bf$bf_median_based, age_breed_bf$bf_median_based, training_breed_bf$bf_median_based))
+model_breed_bfs
+write_csv(model_breed_bfs, here("R/model_breed_bfs.csv"))
+model_breed_bfs <- read_csv(here("R/model_breed_bfs.csv"))
+
+## Build table ------------------------------------------------------------
+
+breed_table <- bind_cols(as.data.frame(summary(breed_model)$coefficients),
+                         drop1_breed_model,
+                         breed_model_boot_ci,
+                         model_breed_bfs) %>%
+  select(effect, Estimate, SE = `Std. Error`, LowerCI = X2.5., UpperCI = X97.5., Chi2 = LRT, df = npar, p = `Pr(Chi)`, bf) %>%
+  mutate(across(.cols = c(Chi2, p, bf), ~ round(.x, 2))) %>% 
+  mutate(across(Chi2:bf, ~replace_na(.x, ""))) %>% 
+  remove_rownames()
+
+
+
+
+# pred.names = tibble(effect=c("(Intercept)", "Condition", "Order of condition", "Trial number", "Sex", "Age", "C-BARQ trainability score"))
+# 
+# model_table_breed_model <- bind_cols(as.data.frame(summary(breed_model)$coefficients),
+#                                      drop1_breed_model,
+#                                      boot.res_breed_model$ci.estimates,
+#                                      pred.names) %>% #,model_bfs
+#   select(effect, Estimate, SE = `Std. Error`, LowerCI = X2.5., UpperCI = X97.5., Chi2 = LRT, df = npar, p = `Pr(Chi)`) %>%#, bf
+#   mutate(across(.cols = c(p), ~ round(.x, 3))) %>% #bf
+#   mutate(across(.cols = c(Estimate:Chi2), ~ round(.x, 2))) %>% 
+#   mutate(across(Chi2:p, ~replace_na(.x, ""))) %>% #:bf
+#   remove_rownames()
+# 
+# model_table_breed_model.re <-as.data.frame(VarCorr(breed_model))%>%
+#   filter(is.na(var2))%>%
+#   select("Random.intercept" = grp, "Random.slope" = var1, "SD" = sdcor)%>%
+#   mutate(across(.cols = c(SD), ~ round(.x, 2)))%>%
+#   mutate(Random.intercept=fct_recode(Random.intercept,  "Subject"="subject_ID", "Breed"="breed"), Random.slope=fct_recode(Random.slope,  "Condition"="condition.c", "Trial number"="z.trial_num",  "Order of conditions"="condition_order.c",  "Sex"="sex.c",  "Age"="z.age",  "C-BARQ trainability score"="z.training_experience"))
+# # check for colliniarity
+# xx3 <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
+#           data = breed_data
+# )
+# vif(xx3)
+# 
+# ### Model stability
+# m.stab.b_breed_model <- glmm.model.stab(model.res = breed_model, use = c("subject_ID", "breed"))
+# m.stab.b_breed_model$detailed$warnings
+# xx2 <- as.data.frame(round(m.stab.b$summary[, -1], 3))
+# # png("graphs/breed_model_stability_plot.png")
+# # m.stab.plot(round(m.stab.b_breed_model$summary[, -1], 3))
+# # dev.off()
+# m.stab.plot(round(m.stab.b_breed_model$summary[, -1], 3))
