@@ -227,11 +227,11 @@ breed_model <- glmer(response ~ condition + condition_order + z.trial_num + sex 
              family = binomial, data = breed_data, control = contr
 )
 
-drop1_breed_model<-drop1(breed_model, test = "Chisq", control = contr) 
-round(drop1_breed_model, 3)
-round(summary(breed_model)$coefficients, 3)
-
-summary(breed_model)$varcor
+drop1_breed_model<-drop1(breed_model, test = "Chisq", control = contr)
+# round(drop1_breed_model, 3)
+# round(summary(breed_model)$coefficients, 3)
+# 
+# summary(breed_model)$varcor
 
 
 ## Bootstrap 95% CIs ------------------------------------------------------
@@ -240,44 +240,44 @@ summary(breed_model)$varcor
 # write_csv(breed_model_boot_ci$ci.estimates, here("R/breed_model_boot_ci.csv"))
 breed_model_boot_ci <- read_csv(here("R/breed_model_boot_ci.csv"))
 
-round(boot.res_breed_model$ci.estimates, 3)
+# round(breed_model_boot_ci, 3)
 
 
 ## Bayes factors ----------------------------------------------------------
 
-ncores = parallel::detectCores()
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores())
-
-bayes_breed_full <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-bayes_breed_nocondition <- brm(response ~ condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(condition_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nocondition, repetitions = 10, silent = TRUE))
-
-bayes_breed_noconditionorder <- brm(response ~ condition + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(order_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noconditionorder, repetitions = 10, silent = TRUE))
-
-bayes_breed_notrialnum <- brm(response ~ condition + condition_order + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(trialnum_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notrialnum, repetitions = 10, silent = TRUE))
-
-bayes_breed_nosex <- brm(response ~ condition + condition_order + z.trial_num + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(sex_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nosex, repetitions = 10, silent = TRUE))
-
-bayes_breed_noage <- brm(response ~ condition + condition_order + z.trial_num + sex + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(age_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noage, repetitions = 10, silent = TRUE))
-
-bayes_breed_notraining <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
-
-(training_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notraining, repetitions = 10, silent = TRUE))
-
-model_breed_bfs <- tibble(effect = c("(Intercept)", "Condition", "Order of condition", "Trial number", "Sex", "Age", "C-BARQ trainability score"), bf = c(NA, condition_breed_bf$bf_median_based, order_breed_bf$bf_median_based, trialnum_breed_bf$bf_median_based, sex_breed_bf$bf_median_based, age_breed_bf$bf_median_based, training_breed_bf$bf_median_based))
-model_breed_bfs
-write_csv(model_breed_bfs, here("R/model_breed_bfs.csv"))
+# ncores = parallel::detectCores()
+# rstan_options(auto_write = TRUE)
+# options(mc.cores = parallel::detectCores())
+# 
+# bayes_breed_full <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# bayes_breed_nocondition <- brm(response ~ condition_order + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (condition_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nocondition, repetitions = 10, silent = TRUE))
+# 
+# bayes_breed_noconditionorder <- brm(response ~ condition + z.trial_num + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (order_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noconditionorder, repetitions = 10, silent = TRUE))
+# 
+# bayes_breed_notrialnum <- brm(response ~ condition + condition_order + sex + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (trialnum_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notrialnum, repetitions = 10, silent = TRUE))
+# 
+# bayes_breed_nosex <- brm(response ~ condition + condition_order + z.trial_num + z.age + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (sex_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_nosex, repetitions = 10, silent = TRUE))
+# 
+# bayes_breed_noage <- brm(response ~ condition + condition_order + z.trial_num + sex + z.training_experience + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (age_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_noage, repetitions = 10, silent = TRUE))
+# 
+# bayes_breed_notraining <- brm(response ~ condition + condition_order + z.trial_num + sex + z.age + (condition.c + z.trial_num |subject_ID) + (condition.c + condition_order.c + z.trial_num + sex.c + z.age + z.training_experience|breed), family = bernoulli, data = breed_data, save_pars = save_pars(all = TRUE), iter = 12000, warmup = 2000)
+# 
+# (training_breed_bf <- bayes_factor(bayes_breed_full, bayes_breed_notraining, repetitions = 10, silent = TRUE))
+# 
+# model_breed_bfs <- tibble(effect = c("(Intercept)", "Condition", "Order of condition", "Trial number", "Sex", "Age", "C-BARQ trainability score"), bf = c(NA, condition_breed_bf$bf_median_based, order_breed_bf$bf_median_based, trialnum_breed_bf$bf_median_based, sex_breed_bf$bf_median_based, age_breed_bf$bf_median_based, training_breed_bf$bf_median_based))
+# model_breed_bfs
+# write_csv(model_breed_bfs, here("R/model_breed_bfs.csv"))
 model_breed_bfs <- read_csv(here("R/model_breed_bfs.csv"))
 
 ## Build table ------------------------------------------------------------
