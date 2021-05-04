@@ -1,0 +1,34 @@
+---
+title: "MD1 - reliability analysis"
+author: ""
+date: "May 4, 2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+
+library(tidyverse)
+library(psych)
+library(summarytools)
+```
+
+
+### Reliability analysis
+
+```{r include = FALSE}
+reli.data<-read.csv(file = "data/md1_reli_data_vienna.csv")
+view(dfSummary(reli.data))
+cohen.kappa(cbind(reli.data$response_orig,reli.data$response_reli))
+```
+A second rater naïve to the hypotheses and theoretical background of the study scored the data of 18 randomly selected dogs (ca. 30% of the preregistered sample). We used Cohen’s kappa to assess the interobserver reliability of the binary response variable “correct choice”. The two raters were in complete agreement (Κ=1, N=360).
+
+
+
+
