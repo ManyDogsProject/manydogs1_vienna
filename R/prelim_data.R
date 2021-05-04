@@ -229,10 +229,10 @@ model_table <- bind_cols(as.data.frame(summary(full_model)$coefficients),
 # check_model(full_model)
 # 
 # # check for collinearity
-# xx <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
-#   data = model_data
-# )
-# vif(xx)
+check_collinear <- lm(response ~ condition + condition_order + z.trial_num + sex + z.age,
+  data = model_data
+)
+predictor_vifs <- vif(check_collinear)
 # # Collinearity was no issue (maximum variance inflation factor: 1.02)
 
 
