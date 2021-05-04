@@ -1,0 +1,70 @@
+---
+title: "Preliminary data"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  pdf_document: 
+    fig_caption: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(papaja)
+library(kableExtra)
+library(rmarkdown)
+library(here)
+source(here("R/prelim_data.R"))
+```
+
+
+# Analysis
+
+We pre-registered the study design, procedure, predictions, and confirmatory analysis prior to data collection at the Open Science Framework (https://osf.io/gz5pj/). The data and analysis script are available in an associated online repository at https://github.com/ManyDogsProject/manydogs1_vienna.git. 
+
+## Reliability analysis
+
+A second rater naive to the hypotheses and theoretical background of the study scored the data of 18 randomly selected dogs (ca. 30% of the preregistered sample). We used Cohen’s kappa to assess the interobserver reliability of the binary response variable “correct choice”. The two raters were in complete agreement ($\kappa$=`r reliability_kappa$kappa`, N=`r reliability_kappa$n.obs`).
+
+## Hypothesis tests
+
+To evaluate whether dogs' performance deviated significantly from the chance level of 0.5 in the ostensive, non-ostensive, and odor control conditions, we first aggregated the data across trials for each individual and condition. We then conducted one-sample t-tests to compare the performance against chance. We calculated Bayes factors using the `ttestBF()` function from the _BayesFactor_ package [@Morey.2018] in using R [@R-base].   
+
+To compare the performance between the test conditions (ostensive, non-ostensive) we fitted a Generalised Linear Mixed Model (GLMM) with binomial error distribution and logit link function using the function 'glmer' of the lme4 package [@Bates.2015]. We included the predictor variables condition, order of condition (ostensive first, non-ostensive first), trial number within condition, sex, age (in years), dogs' trainability score based on the C-BARQ questionnaire [@Hsu.2003]. Additionally, we included the random intercept of subject ID and the random slopes of condition and trial number within subject ID.  
+
+All covariates were centered and scaled to a standard deviation of 1. The random slope components of the factors were centered (to ensure that the results were not conditional on the choice of the reference category). Confidence intervals for the predictors were derived based on 1000 parametric bootstraps using a function kindly provided by Roger Mundry (based on the `bootMer()` function of the package _lme4_). To check for collinearity, we determined variance inflation factors (VIF) using the function `vif()` (R package _car_, @Fox.2019). Collinearity was no issue (maximum VIF: 1.02). To evaluate model stability, we dropped one level of the subject ID random effect at a time and compared the model estimates of the resulting models (using a function kindly provided by Roger Mundry). This procedure revealed the model to be stable with respect to the fixed effects.
+
+As inference criterion, we used p-values below .05 (two-tailed) for the one-sample t-tests. For the GLMM, we used likelihood ratio tests (R function `drop1()` with argument 'test' set to "Chisq", @Barr.2013) with p-values below 0.05 as criterion to make inferences about fixed effects. 
+
+Bayes factors for the models were calculated from Bayesian models using the `brm()` function from the _brms_ package [@R-brms]. We used default, non-informative priors, 12,000 iterations per chain (of which 2,000 were warm-up iterations), and 4 chains for the Bayesian models. We then used the `bayes_factor()` function to compare models, with 10 repetitions using bridge sampling [@R-bridge_sampler]. For the GLMM, Bayes factors represent the evidence for the full model over the full model without the fixed effect under investigation.
+
+
+# Results  
+
+## One-sample t-test to compare against chance level
+
+The dogs (N = `r num_subjects`) performed significantly better than expected by chance in the ostensive condition (`r apa_print(tt.ost)$full_result`, `r apa_print(ttbf.ost)$statistic`) but not in the non-ostensive condition (`r apa_print(tt.non)$full_result`, `r apa_print(ttbf.non)$statistic`) or the odor control condition (`r apa_print(tt.oc)$full_result`, `r apa_print(ttbf.oc)$statistic`) (Figure \ref{fig:cond-chance}).
+
+```{r cond-chance, fig.cap = "Violin and dot plot of dogs' performance (N=61) across the non-ostensive and ostensive test conditions (A) and the odor control condition (B) of Experiment 1. The red dashed lines show the chance level of 0.5. Dots represent the mean proportion correct for each individual. The grey lines connect dots representing the same individuals. The error bars represent 95\\% confidence intervals based on a parametric bootstrap; the filled circles on top of the error bars show the fitted model.", fig.align = "center", out.width = "60%"}
+knitr::include_graphics(path = here("graphs/md1_conditions.png"))
+```
+
+
+
+## Generalised linear mixed model
+
+The dogs were significantly more likely to choose the baited cup in the ostensive condition compared to the non-ostensive condition ($\chi$^2^(`r drop1_full_model["condition", "npar"]`) = `r printnum(drop1_full_model["condition", "LRT"])`, p = `r printp(drop1_full_model["condition", "Pr(Chi)"])`) (Figure \ref{fig:cond-chance}A). None of the control predictors (order of condition, trial number within condition, sex, age, C-BARQ trainability score) had any effect on dogs' choices (Table \ref{tab:glmm-table}).
+
+```{r glmm-table, echo = FALSE}
+apa_table(model_table, caption = "Results of GLMM of the dogs' choice performance", note = "Reference categories --- condition: non-ostensive condition; order of condition: non-ostensive condition first; sex: female; covariates trial number, age, and training experienced were centered and scaled to a standard deviation of 1. The standard deviations for the contribution of the random effects were 0.099 for the random intercept of subject, 0.159 for the random slope of condition within subject, and 0.063 for the random slope of trial number within subject.", col.names = c("", "Estimate", "SE", "Lower CI", "Upper CI", "$\\chi^{2}$", "df", "p", "$BF_{10}$"), align = c("l", rep("r", 8)), placement = "h")
+```
+
+<!-- # Study 2 -->
+
+<!-- ## Genetic analysis of among-breed heritability -->
+
+<!-- To assess among-breed heritability [@MacLean.et.al.2019] we will fit an animal model [@Wilson.et.al.2010] which incorporates a genetic effect with a known covariance structure in order to estimate the proportion of phenotypic variance attributable to additive genetic effects. Genetic analyses will take a breed-average approach, integrating publicly available genetic data on the breeds in our dataset, rather than genotyping the individuals in the cognitive experiment.  -->
+
+<!-- Breed average genetic similarity will be represented by an identity-by-state (IBS) matrix calculated from publicly available genetic data collected using the Illumina CanineHD bead array [@Parker.et.al.2017]. The proportion of single-nucleotide polymorphisms (SNPs) identical by state between pairs of individual dogs will be calculated using PLINK [@Purcell.Chang.2018]. These values will then be averaged for every pair of breeds in order to generate a breed-average IBS matrix. This breed-average IBS matrix will be extrapolated to an individual-level IBS matrix for purposes of our analysis.  For individuals of different breeds, the IBS value will be set to the average similarity between those breeds in the genetic dataset. For individuals of the same breed, the IBS value will be set to the average IBS value among members of that breed in the genetic dataset. This purpose of this approach is to simultaneously incorporate a measure of between- and within-breed genetic similarity,  retaining the ability to model phenotypes at the individual, rather than breed-average level.  -->
+
+<!-- Heritability models will be fit using the `brm()` function from the _brms_ package [@R-brms] with weakly informative priors.  We will use 12,000 iterations per chain, with the first 2,000 iterations being used as a warm-up, and a subsequent thinning interval of 10 iterations for retention of samples for the posterior distributions.  We will report the mean and 90% credible interval for the posterior distribution of heritability estimates for this analysis.   -->
